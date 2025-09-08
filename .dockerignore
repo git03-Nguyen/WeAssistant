@@ -1,0 +1,45 @@
+# Ignore Python cache and artifacts
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+*.py[cod]
+*.so
+*.egg-info/
+build/
+dist/
+
+# Ignore environment files
+.env
+.env.*
+
+# Ignore git and VCS
+.git/
+.gitignore
+
+# Ignore Dockerfile and docker-compose override (if not needed)
+Dockerfile*
+docker-compose.override.yml
+
+# Ignore OS files
+.DS_Store
+Thumbs.db
+
+# Ignore VS Code settings
+.vscode/
+
+# Ignore notebooks and checkpoints
+*.ipynb
+.ipynb_checkpoints/
+
+# Ignore data files
+*.db
+*.sqlite3
+*.csv
+*.tsv
+*.xls*
+*.xlsx
+*.parquet
+
+# Ignore node modules (if present)
+node_modules/
