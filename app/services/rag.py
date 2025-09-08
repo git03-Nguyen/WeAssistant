@@ -25,9 +25,9 @@ class RAGService:
         self.settings = get_settings()
         self.qdrant_client = QdrantClient(url=self.settings.qdrant_url)
         self.embeddings = OpenAIEmbeddings(
-            model="text-embedding-3-small"  # Cheaper embedding model
+            model=self.settings.openai_embed_model,
         )
-        self.collection_name = "documents"  # Default collection name
+        self.collection_name = self.settings.qdrant_collection
         self.text_splitter = RecursiveCharacterTextSplitter(
             chunk_size=800,  # Smaller chunks for better precision
             chunk_overlap=100,  # Reduced overlap to save storage

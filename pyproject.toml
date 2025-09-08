@@ -13,9 +13,7 @@ dependencies = [
     "qdrant-client>=1.15.1",
     "uvicorn>=0.35.0",
     "pydantic-settings>=2.0.0",
-    "python-multipart>=0.0.6",
     "openai>=1.106.1",
-    "langchain-chroma>=0.2.5",
     "langchain-core>=0.3.75",
     "langchain-text-splitters>=0.3.11",
 ]

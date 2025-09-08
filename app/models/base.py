@@ -24,13 +24,15 @@ class BaseModel(Base):
     )
 
     created_at: Mapped[datetime] = mapped_column(
-        DateTime(timezone=False), server_default=func.utcnow(), nullable=False
+        DateTime(timezone=False),
+        server_default=func.timezone("UTC", func.now()),
+        nullable=False,
     )
 
     updated_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=False),
-        server_default=func.utcnow(),
-        onupdate=func.utcnow(),
+        server_default=func.timezone("UTC", func.now()),
+        onupdate=func.timezone("UTC", func.now()),
         nullable=False,
     )
 

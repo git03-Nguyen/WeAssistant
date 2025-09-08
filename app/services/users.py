@@ -21,7 +21,7 @@ class UserService:
         try:
             user = User(name=request.name, withdrawed_amount=0.0)
             self.session.add(user)
-            await self.session.flush()
+            await self.session.commit()
             return user
         except Exception as e:
             raise DatabaseError(f"Failed to create user: {e}")
