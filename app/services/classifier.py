@@ -7,6 +7,7 @@ from typing import Dict, Optional
 from langchain_core.output_parsers import JsonOutputParser
 from langchain_core.prompts import ChatPromptTemplate
 from langchain_openai import ChatOpenAI
+from pydantic import SecretStr
 
 from app.config.settings import get_settings
 from app.models.intent import IntentType
@@ -35,6 +36,7 @@ class IntentClassifierService:
             raise ValueError("OpenAI API key is required for intent classification")
         return ChatOpenAI(
             model=self.settings.openai_classifier_model,
+            api_key=SecretStr(self.settings.openai_api_key),
             temperature=0,  # Deterministic results
         )
 

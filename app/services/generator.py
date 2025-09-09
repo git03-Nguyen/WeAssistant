@@ -8,6 +8,7 @@ from langchain.chains.combine_documents import create_stuff_documents_chain
 from langchain_core.prompts import ChatPromptTemplate, MessagesPlaceholder
 from langchain_core.runnables.history import RunnableWithMessageHistory
 from langchain_openai import ChatOpenAI
+from pydantic import SecretStr
 
 from app.config.settings import get_settings
 from app.models.intent import IntentType
@@ -33,6 +34,7 @@ class ResponseGeneratorService:
             raise ValueError("OpenAI API key is required")
         return ChatOpenAI(
             model=self.settings.openai_chat_model,
+            api_key=SecretStr(self.settings.openai_api_key),
             temperature=0,  # Deterministic results enable OpenAI's automatic caching
         )
 

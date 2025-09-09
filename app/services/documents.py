@@ -50,26 +50,27 @@ class DocumentService:
 
             self.session.add(document)
             await self.session.flush()  # Get the document ID
+            document_id = str(document.id)
 
             try:
                 # Ingest with RAG service
                 rag_metadata = {
-                    "document_id": str(document.id),
+                    "document_id": document_id,
                     "filename": filename,
                     "title": title,
                     **metadata,
                 }
 
-                await self.rag_service.ingest_document(
-                    content, content_type, rag_metadata
+                chunks_created = await self.rag_service.ingest_document(
+                    document_id,
+                    content,
+                    content_type,
+                    rag_metadata,
                 )
-
-                # Calculate chunks (rough estimate)
-                chunks_created = len(content) // 800 + 1
 
                 # Update status to completed
                 await self.update_document_status(
-                    str(document.id),
+                    document_id,
                     DocumentStatus.COMPLETED,
                     chunks_created=chunks_created,
                 )

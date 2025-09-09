@@ -21,7 +21,7 @@ class Settings(BaseSettings):
     database_url: Optional[str] = Field(default=None, alias="DATABASE_URL")
 
     # OpenAI settings
-    openai_api_key: Optional[str] = Field(default=None, alias="OPENAI_API_KEY")
+    openai_api_key: str = Field(default="", alias="OPENAI_API_KEY")
     openai_chat_model: str = Field(default="gpt-5-nano", alias="OPENAI_CHAT_MODEL")
     openai_classifier_model: str = Field(
         default="gpt-5-nano", alias="OPENAI_CLASSIFIER_MODEL"

@@ -3,14 +3,14 @@
 import json
 from typing import Optional, Tuple
 
-import spacy
 from fastapi import UploadFile
 from langchain.schema import Document
 from langchain.text_splitter import (
     MarkdownHeaderTextSplitter,
-    SpacyTextSplitter,
 )
-from langchain_text_splitters import RecursiveCharacterTextSplitter
+from langchain_text_splitters import (
+    RecursiveCharacterTextSplitter,
+)
 
 
 class FileProcessor:
@@ -64,70 +64,46 @@ class FileProcessor:
 
 
 class SmartSplitter:
-    """Two-stage splitter: (1) structure-aware -> (2) spaCy sentence-aware."""
-
-    _MODEL_BY_LANG: dict[str, str] = {
-        "en": "en_core_web_sm",
-        "vi": "vi_core_news_sm",
-        # add more if you pre-download them
-    }
-
-    # preload default model
-    spacy.load("en_core_web_sm")
-    # ──────────────────────────────────────────────────────────────────────────
-
     def __init__(
         self,
-        lang: str = "en",
-        chunk_size: int = 800,
+        chunk_size: int = 1000,
         chunk_overlap: int = 400,
     ):
-        # sentence splitter (stage-2) - always spaCy
-        pipeline = self._MODEL_BY_LANG.get(lang.lower(), "sentencizer")
-        self._sentence_splitter = SpacyTextSplitter(
-            pipeline=pipeline,
-            chunk_size=chunk_size,
-            chunk_overlap=chunk_overlap,
+        self._chunk_size = max(100, chunk_size)
+        self._chunk_overlap = min(chunk_size - 50, max(0, chunk_overlap))
+
+        self._markdown_header_splitter = MarkdownHeaderTextSplitter(
+            headers_to_split_on=[("##", "h2")],
+            return_each_line=False,
+            strip_headers=False,
+        )
+        self._recursive_character_splitter = RecursiveCharacterTextSplitter(
+            separators=["\n\n", "\n", ".", "!"],
+            keep_separator=True,
+            chunk_size=self._chunk_size,
+            chunk_overlap=self._chunk_overlap,
         )
 
-    # ──────────────────────────────────────────────────────────────────────────
     def _choose_header_splitter(self, content_type: str):
         ctype = content_type.lower()
         if "markdown" in ctype:
-            return MarkdownHeaderTextSplitter(
-                headers_to_split_on=[("#", "h1"), ("##", "h2"), ("###", "h3")],
-                return_each_line=False,
-                strip_headers=True,
-                custom_header_patterns=None,
-            )
+            return self._markdown_header_splitter
         # fallback: plain text
-        return RecursiveCharacterTextSplitter(
-            separators=["\n\n", "\n", " ", ""],
-            is_separator_regex=False,
-            keep_separators=False,
-            strip_white_space=True,
-            chunk_size=self._sentence_splitter._chunk_size,
-            chunk_overlap=self._sentence_splitter._chunk_overlap,
-        )
+        return self._recursive_character_splitter
 
-    # ──────────────────────────────────────────────────────────────────────────
+    # The main method to split text into chunks
     def split_text(
         self,
         content: str,
-        content_type: str = "text/plain",
-        lang: str | None = None,
+        content_type: str = "text/markdown",
     ) -> list[Document]:
         """Pipeline entry - returns list[Document] ready for embeddings."""
-        if lang:  # allow per-call override
-            self.__init__(lang)
 
         header_splitter = self._choose_header_splitter(content_type)
         docs: list[Document] = []
         for section in header_splitter.split_text(content):
             if isinstance(section, Document):
-                final_docs = self._sentence_splitter.split_documents([section])
+                docs.append(section)
             elif isinstance(section, str):
-                content_doc = self._sentence_splitter.split_text(section)
-                final_docs = [Document(page_content=txt) for txt in content_doc]
-            docs += final_docs
+                docs += [Document(page_content=section)]
         return docs

@@ -19,6 +19,4 @@ dependencies = [
     "langchain-postgres>=0.0.15",
     "psycopg[binary]>=3.2.10",
     "python-multipart>=0.0.20",
-    "spacy>=3.8.7",
-    "pip>=25.2",
 ]

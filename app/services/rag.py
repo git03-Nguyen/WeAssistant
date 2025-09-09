@@ -2,13 +2,13 @@
 
 import hashlib
 import json
-import uuid
 from datetime import datetime, timedelta
 from typing import Any, List, Optional
 
 from langchain_core.documents import Document
 from langchain_openai import OpenAIEmbeddings
 from langchain_qdrant import QdrantVectorStore
+from pydantic import SecretStr
 from qdrant_client import QdrantClient
 from qdrant_client.http.models import FieldCondition, Filter, MatchValue
 
@@ -25,11 +25,11 @@ class RAGService:
         self.qdrant_client = QdrantClient(url=self.settings.qdrant_url)
         self.embeddings = OpenAIEmbeddings(
             model=self.settings.openai_embed_model,
+            api_key=SecretStr(self.settings.openai_api_key),
         )
         self.collection_name = self.settings.qdrant_collection
         self.text_splitter = SmartSplitter(
-            lang="en",
-            chunk_size=800,
+            chunk_size=1000,
             chunk_overlap=400,
         )
 
@@ -77,8 +77,8 @@ class RAGService:
         self._query_cache[cache_key] = {"result": result, "timestamp": datetime.now()}
 
     async def ingest_document(
-        self, content: str, content_type: str, metadata: dict[str, Any]
-    ) -> str:
+        self, doc_id: str, content: str, content_type: str, metadata: dict[str, Any]
+    ) -> int:
         """
         Optimized document ingestion with reduced storage.
 
@@ -88,12 +88,9 @@ class RAGService:
             metadata: Document metadata
 
         Returns:
-            Document ID
+            Document ID, number of chunks created
         """
         try:
-            # Generate unique document ID
-            doc_id = str(uuid.uuid4())
-
             # Split into optimized documents
             docs = self.text_splitter.split_text(content, content_type)
 
@@ -119,7 +116,7 @@ class RAGService:
                 # Prepend title and part info to chunk content for better retrieval
                 doc.page_content = title_prefix + doc.page_content
 
-                # Merge metadata efficiently, prioritizing explicit keys
+                # Merge metadata
                 doc.metadata = {
                     "document_id": doc_id,
                     "chunk_index": i,
@@ -132,7 +129,7 @@ class RAGService:
             # Add to vector store
             await self.vector_store.aadd_documents(documents)
 
-            return doc_id
+            return len(documents)
 
         except Exception as e:
             raise RAGServiceError(f"Failed to ingest document: {str(e)}")
@@ -357,7 +354,10 @@ class RAGService:
         try:
             from langchain_openai import ChatOpenAI
 
-            llm = ChatOpenAI()
+            llm = ChatOpenAI(
+                api_key=SecretStr(self.settings.openai_api_key),
+                model=self.settings.openai_chat_model,
+            )
 
             # Truncate context to save tokens
             context = documents[0].page_content[:300]
