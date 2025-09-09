@@ -3,11 +3,11 @@
 import asyncio
 from typing import Dict, Optional
 
+from langchain_core.messages import AIMessage, HumanMessage
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.exceptions import DatabaseError
 from app.models.intent import IntentType
-from app.models.message import Message
 from app.models.thread import Thread
 from app.schemas.chat import ChatRequest
 from app.services.classifier import IntentClassifierService
@@ -37,15 +37,16 @@ class ChatOrchestrator:
             # Step 1: Get or create thread
             thread = await self._get_or_create_thread(request)
 
-            # Step 2: Save user message immediately
-            user_message = await self._save_user_message(thread.id, request.message)
-
-            # Step 3: Parallel processing - Moderation & Intent Classification
+            # Step 2: Parallel processing - Moderation & Intent Classification
             moderation_task = self.moderator.is_content_safe(request.message)
             intent_task = self.intent_classifier.classify_intent(request.message)
 
             # Wait for both to complete
             is_safe, intent_result = await asyncio.gather(moderation_task, intent_task)
+
+            # Step 3: Save user message to chat history
+            user_message = HumanMessage(content=request.message)
+            await self.session_manager.add_messages(thread.id, [user_message])
 
             # Step 4: Handle moderation failure
             if not is_safe:
@@ -53,9 +54,8 @@ class ChatOrchestrator:
                     "I cannot process that request. Please ensure your message "
                     "follows our community guidelines."
                 )
-                assistant_message = await self._save_assistant_message(
-                    thread.id, assistant_response
-                )
+                assistant_message = AIMessage(content=assistant_response)
+                await self.session_manager.add_messages(thread.id, [assistant_message])
                 await self.session.commit()
 
                 return self._create_response(
@@ -67,14 +67,13 @@ class ChatOrchestrator:
                 request.message, intent_result, thread.id
             )
 
-            # Step 6: Save assistant message and commit
-            assistant_message = await self._save_assistant_message(
-                thread.id, assistant_response
-            )
+            # Step 6: Save assistant message to chat history
+            assistant_message = AIMessage(content=assistant_response)
+            await self.session_manager.add_messages(thread.id, [assistant_message])
             await self.session.commit()
 
             # Clear cache for fresh data
-            self.session_manager.invalidate_cache(thread.id)
+            await self.session_manager.clear_cache(thread.id)
 
             return self._create_response(
                 thread.id,
@@ -91,7 +90,22 @@ class ChatOrchestrator:
     async def get_thread_history(self, thread_id: str, limit: Optional[int] = None):
         """Get thread history for API responses."""
         try:
-            return await self.session_manager.get_thread_messages(thread_id, limit)
+            messages = await self.session_manager.get_thread_messages(thread_id, limit)
+
+            # Convert BaseMessage objects to response format
+            formatted_messages = []
+            for msg in messages:
+                if hasattr(msg, "content"):
+                    message_data = {
+                        "content": msg.content,
+                        "role": "user"
+                        if msg.__class__.__name__ == "HumanMessage"
+                        else "assistant",
+                        "type": msg.__class__.__name__.lower().replace("message", ""),
+                    }
+                    formatted_messages.append(message_data)
+
+            return {"messages": formatted_messages, "total": len(formatted_messages)}
         except Exception as e:
             raise DatabaseError(f"Failed to get thread history: {e}")
 
@@ -111,33 +125,27 @@ class ChatOrchestrator:
             await self.session.flush()
             return thread
 
-    async def _save_user_message(self, thread_id: str, content: str) -> Message:
-        """Save user message to database."""
-        message = Message(thread_id=thread_id, role="user", content=content)
-        self.session.add(message)
-        await self.session.flush()
-        return message
-
-    async def _save_assistant_message(self, thread_id: str, content: str) -> Message:
-        """Save assistant message to database."""
-        message = Message(thread_id=thread_id, role="assistant", content=content)
-        self.session.add(message)
-        await self.session.flush()
-        return message
-
     def _create_response(
         self,
         thread_id: str,
-        user_message: Message,
-        assistant_message: Message,
+        user_message: HumanMessage,
+        assistant_message: AIMessage,
         intent: IntentType,
         confidence: float,
     ) -> Dict:
         """Create standardized response format."""
         return {
             "thread_id": thread_id,
-            "user_message": user_message,
-            "assistant_message": assistant_message,
+            "user_message": {
+                "role": "user",
+                "content": user_message.content,
+                "type": "human",
+            },
+            "assistant_message": {
+                "role": "assistant",
+                "content": assistant_message.content,
+                "type": "ai",
+            },
             "intent": intent.value,  # Convert enum to string for API response
             "confidence": confidence,
             "profile_used": None,

@@ -4,7 +4,7 @@ from typing import Optional
 
 from pydantic import BaseModel, Field
 
-from app.schemas.message import MessageResponse
+from app.schemas.message import BaseMessageResponse
 
 
 class ChatRequest(BaseModel):
@@ -36,10 +36,10 @@ class ChatResponse(BaseModel):
     thread_id: str = Field(
         ..., description="Thread ID where the conversation is happening"
     )
-    user_message: MessageResponse = Field(
+    user_message: BaseMessageResponse = Field(
         ..., description="The user's message that was saved"
     )
-    assistant_message: MessageResponse = Field(
+    assistant_message: BaseMessageResponse = Field(
         ..., description="The assistant's response message"
     )
     intent: str = Field(..., description="Detected user intent")
@@ -53,22 +53,14 @@ class ChatResponse(BaseModel):
             "example": {
                 "thread_id": "thread-123e4567-e89b-12d3-a456-426614174000",
                 "user_message": {
-                    "id": "msg-123e4567-e89b-12d3-a456-426614174001",
-                    "role": "user",
                     "content": "How can I start trading?",
-                    "thread_id": "thread-123e4567-e89b-12d3-a456-426614174000",
-                    "created_at": "2024-01-15T10:30:00Z",
-                    "updated_at": "2024-01-15T10:30:00Z",
-                    "deleted_at": None,
+                    "role": "user",
+                    "type": "human",
                 },
                 "assistant_message": {
-                    "id": "msg-123e4567-e89b-12d3-a456-426614174002",
-                    "role": "assistant",
                     "content": "To start trading, you should first educate yourself about the markets...",
-                    "thread_id": "thread-123e4567-e89b-12d3-a456-426614174000",
-                    "created_at": "2024-01-15T10:30:01Z",
-                    "updated_at": "2024-01-15T10:30:01Z",
-                    "deleted_at": None,
+                    "role": "assistant",
+                    "type": "ai",
                 },
                 "intent": "FAQ",
                 "confidence": 0.95,

@@ -4,7 +4,6 @@ from typing import List, Optional, Tuple
 
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy.orm import selectinload
 
 from app.core.exceptions import DatabaseError
 from app.models.thread import Thread
@@ -39,20 +38,6 @@ class ThreadService:
             return result.scalar_one_or_none()
         except Exception as e:
             raise DatabaseError(f"Failed to get thread: {e}")
-
-    async def get_thread_with_messages(self, thread_id: str) -> Optional[Thread]:
-        """Get thread with messages by ID."""
-        try:
-            stmt = (
-                select(Thread)
-                .options(selectinload(Thread.messages))
-                .where(Thread.id == thread_id)
-                .where(Thread.deleted_at.is_(None))
-            )
-            result = await self.session.execute(stmt)
-            return result.scalar_one_or_none()
-        except Exception as e:
-            raise DatabaseError(f"Failed to get thread with messages: {e}")
 
     async def list_threads(
         self, user_id: Optional[str] = None, page: int = 1, size: int = 10

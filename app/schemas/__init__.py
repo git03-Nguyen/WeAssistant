@@ -12,27 +12,8 @@ from app.schemas.document import (
     DocumentUploadResponse,
 )
 from app.schemas.message import (
-    MessageCreateRequest,
+    BaseMessageResponse,
     MessageListResponse,
-    MessageResponse,
-    MessageUpdateRequest,
-)
-from app.schemas.rag import (
-    DocumentIngestRequest as RAGDocumentIngestRequest,
-)
-from app.schemas.rag import (
-    DocumentIngestResponse as RAGDocumentIngestResponse,
-)
-from app.schemas.rag import (
-    DocumentRemoveRequest as RAGDocumentRemoveRequest,
-)
-from app.schemas.rag import (
-    DocumentRemoveResponse as RAGDocumentRemoveResponse,
-)
-from app.schemas.rag import (
-    DocumentSearchRequest,
-    DocumentSearchResponse,
-    DocumentSearchResult,
 )
 from app.schemas.thread import (
     ThreadCreateRequest,
@@ -69,16 +50,6 @@ __all__ = [
     "ThreadWithMessagesResponse",
     "ThreadListResponse",
     # Message schemas
-    "MessageCreateRequest",
-    "MessageUpdateRequest",
-    "MessageResponse",
+    "BaseMessageResponse",
     "MessageListResponse",
-    # RAG schemas (legacy)
-    "RAGDocumentIngestRequest",
-    "RAGDocumentIngestResponse",
-    "RAGDocumentRemoveRequest",
-    "RAGDocumentRemoveResponse",
-    "DocumentSearchRequest",
-    "DocumentSearchResponse",
-    "DocumentSearchResult",
 ]

@@ -7,9 +7,9 @@ from datetime import datetime, timedelta
 from typing import Any, Dict, List, Optional
 
 from langchain.text_splitter import RecursiveCharacterTextSplitter
-from langchain_community.vectorstores import Qdrant
 from langchain_core.documents import Document
 from langchain_openai import OpenAIEmbeddings
+from langchain_qdrant import Qdrant
 from qdrant_client import QdrantClient
 from qdrant_client.http import models
 from qdrant_client.http.models import FieldCondition, Filter, MatchValue
