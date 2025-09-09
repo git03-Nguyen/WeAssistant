@@ -4,18 +4,17 @@ import hashlib
 import json
 import uuid
 from datetime import datetime, timedelta
-from typing import Any, Dict, List, Optional
+from typing import Any, List, Optional
 
-from langchain.text_splitter import RecursiveCharacterTextSplitter
 from langchain_core.documents import Document
 from langchain_openai import OpenAIEmbeddings
-from langchain_qdrant import Qdrant
+from langchain_qdrant import QdrantVectorStore
 from qdrant_client import QdrantClient
-from qdrant_client.http import models
 from qdrant_client.http.models import FieldCondition, Filter, MatchValue
 
 from app.config.settings import get_settings
 from app.core.exceptions import RAGServiceError
+from app.utils.file_processor import SmartSplitter
 
 
 class RAGService:
@@ -28,45 +27,30 @@ class RAGService:
             model=self.settings.openai_embed_model,
         )
         self.collection_name = self.settings.qdrant_collection
-        self.text_splitter = RecursiveCharacterTextSplitter(
-            chunk_size=800,  # Smaller chunks for better precision
-            chunk_overlap=100,  # Reduced overlap to save storage
-            length_function=len,
-            separators=["\n\n", "\n", ".", "!", "?", ",", " ", ""],
+        self.text_splitter = SmartSplitter(
+            lang="en",
+            chunk_size=800,
+            chunk_overlap=400,
         )
 
         # In-memory cache for recent queries
         self._query_cache = {}
         self._cache_ttl = timedelta(minutes=10)
 
-        # Initialize vector store
-        self.vector_store = Qdrant(
+        # Get embedding dimensions based on model
+        if "large" in self.settings.openai_embed_model:
+            self.embedding_dimension = 3072
+        else:
+            self.embedding_dimension = 1536
+
+        # Initialize vector store (assumes collection exists)
+        self.vector_store = QdrantVectorStore(
             client=self.qdrant_client,
             collection_name=self.collection_name,
-            embeddings=self.embeddings,
+            embedding=self.embeddings,
         )
 
-        # Ensure collection exists
-        self._ensure_collection_exists()
-
-    def _ensure_collection_exists(self):
-        """Ensure the Qdrant collection exists."""
-        try:
-            collections = self.qdrant_client.get_collections()
-            collection_names = [col.name for col in collections.collections]
-
-            if self.collection_name not in collection_names:
-                self.qdrant_client.create_collection(
-                    collection_name=self.collection_name,
-                    vectors_config=models.VectorParams(
-                        size=1536,  # OpenAI embedding dimension
-                        distance=models.Distance.COSINE,
-                    ),
-                )
-        except Exception as e:
-            print(f"Warning: Could not ensure collection exists: {e}")
-
-    def _get_cache_key(self, query: str, metadata_filter: Optional[Dict] = None) -> str:
+    def _get_cache_key(self, query: str, metadata_filter: Optional[dict] = None) -> str:
         """Generate cache key for query."""
         cache_data = {"query": query, "filter": metadata_filter or {}}
         return hashlib.md5(json.dumps(cache_data, sort_keys=True).encode()).hexdigest()
@@ -92,12 +76,15 @@ class RAGService:
 
         self._query_cache[cache_key] = {"result": result, "timestamp": datetime.now()}
 
-    async def ingest_document(self, content: str, metadata: Dict[str, Any]) -> str:
+    async def ingest_document(
+        self, content: str, content_type: str, metadata: dict[str, Any]
+    ) -> str:
         """
         Optimized document ingestion with reduced storage.
 
         Args:
             content: Document content
+            content_type: Content type (e.g., "text/plain", "text/markdown")
             metadata: Document metadata
 
         Returns:
@@ -107,19 +94,40 @@ class RAGService:
             # Generate unique document ID
             doc_id = str(uuid.uuid4())
 
-            # Split into optimized chunks
-            chunks = self.text_splitter.split_text(content)
+            # Split into optimized documents
+            docs = self.text_splitter.split_text(content, content_type)
 
-            # Create documents with minimal metadata
+            # Get the title from metadata to append to chunks
+            title = metadata.get("title", "").strip()
+
+            # Create documents with title and part info prepended to content
             documents = []
-            for i, chunk in enumerate(chunks):
-                doc_metadata = {
+            for i, doc in enumerate(docs):
+                # Build title prefix with part information
+                if title:
+                    if len(docs) > 1:
+                        title_prefix = (
+                            f"[Title: {title}\nPart {i + 1} of {len(docs)}]\n\n"
+                        )
+                    else:
+                        title_prefix = f"[Title: {title}]\n\n"
+                else:
+                    title_prefix = (
+                        f"[Part {i + 1} of {len(docs)}]\n\n" if len(docs) > 1 else ""
+                    )
+
+                # Prepend title and part info to chunk content for better retrieval
+                doc.page_content = title_prefix + doc.page_content
+
+                # Merge metadata efficiently, prioritizing explicit keys
+                doc.metadata = {
                     "document_id": doc_id,
                     "chunk_index": i,
                     "user_id": metadata.get("user_id", "unknown"),
-                    **metadata,
+                    "length": len(doc.page_content),
+                    **{**doc.metadata, **metadata},
                 }
-                documents.append(Document(page_content=chunk, metadata=doc_metadata))
+                documents.append(doc)
 
             # Add to vector store
             await self.vector_store.aadd_documents(documents)
@@ -143,46 +151,49 @@ class RAGService:
             Success status
         """
         try:
-            # Use vector store delete method which handles the complexity
-            await self.vector_store.adelete(
-                ids=[document_id] if document_id else [],
-                filter={"document_id": document_id, "user_id": user_id}
-                if user_id
-                else {"document_id": document_id},
+            # Build filter conditions - target the nested metadata structure
+            conditions = [
+                FieldCondition(
+                    key="metadata.document_id", match=MatchValue(value=document_id)
+                )
+            ]
+
+            if user_id is not None:
+                conditions.append(
+                    FieldCondition(
+                        key="metadata.user_id", match=MatchValue(value=str(user_id))
+                    )
+                )
+
+            # Create filter - cast to proper type to satisfy type checker
+            filter_query = Filter(
+                must=[c for c in conditions if isinstance(c, FieldCondition)]
             )
+
+            # Scroll through all matching points to get their IDs
+            scroll_result = self.qdrant_client.scroll(
+                collection_name=self.collection_name,
+                scroll_filter=filter_query,
+                limit=10000,
+                with_payload=True,
+                with_vectors=False,
+            )
+
+            all_points = scroll_result[0]
+
+            if not all_points:
+                return True  # No points to delete
+
+            # Extract point IDs and convert to strings
+            point_ids = [str(point.id) for point in all_points]
+
+            # Delete using the actual point IDs
+            await self.vector_store.adelete(ids=point_ids)
 
             return True
 
-        except Exception:
-            # If that fails, try a simple approach
-            try:
-                # Get all points and filter client-side (less efficient but works)
-                all_points = self.qdrant_client.scroll(
-                    collection_name=self.collection_name,
-                    limit=10000,
-                    with_payload=True,
-                    with_vectors=False,
-                )[0]
-
-                points_to_delete = []
-                for point in all_points:
-                    payload = point.payload or {}
-                    if payload.get("document_id") == document_id and (
-                        user_id is None or payload.get("user_id") == user_id
-                    ):
-                        points_to_delete.append(point.id)
-
-                if points_to_delete:
-                    from qdrant_client.models import PointIdsList
-
-                    self.qdrant_client.delete(
-                        collection_name=self.collection_name,
-                        points_selector=PointIdsList(points=points_to_delete),
-                    )
-
-                return True
-            except Exception as e2:
-                raise RAGServiceError(f"Failed to remove document: {str(e2)}")
+        except Exception as e:
+            raise RAGServiceError(f"Failed to remove document: {str(e)}")
 
     async def search_documents(
         self,
@@ -190,7 +201,7 @@ class RAGService:
         user_id: Optional[int] = None,
         limit: int = 5,
         min_score: float = 0.5,
-    ) -> List[Dict[str, Any]]:
+    ) -> List[dict[str, Any]]:
         """
         Search documents with caching and optimization.
 
@@ -247,7 +258,7 @@ class RAGService:
         self,
         query: str,
         k: Optional[int] = None,
-        metadata_filter: Optional[Dict[str, Any]] = None,
+        metadata_filter: Optional[dict[str, Any]] = None,
         relevance_threshold: float = 0.7,
     ) -> List[Document]:
         """
@@ -267,7 +278,9 @@ class RAGService:
                 filter_conditions = []
                 for key, value in metadata_filter.items():
                     filter_conditions.append(
-                        FieldCondition(key=key, match=MatchValue(value=value))
+                        FieldCondition(
+                            key=f"metadata.{key}", match=MatchValue(value=value)
+                        )
                     )
                 filter_query = Filter(must=filter_conditions)
 
@@ -344,7 +357,7 @@ class RAGService:
         try:
             from langchain_openai import ChatOpenAI
 
-            llm = ChatOpenAI(model="gpt-3.5-turbo", temperature=0)
+            llm = ChatOpenAI()
 
             # Truncate context to save tokens
             context = documents[0].page_content[:300]

@@ -2,14 +2,11 @@
 
 from app.schemas.chat import ChatRequest, ChatResponse
 from app.schemas.document import (
-    DocumentIngestRequest,
     DocumentIngestResponse,
     DocumentListResponse,
     DocumentRemoveRequest,
     DocumentRemoveResponse,
     DocumentResponse,
-    DocumentUploadRequest,
-    DocumentUploadResponse,
 )
 from app.schemas.message import (
     BaseMessageResponse,
@@ -32,9 +29,6 @@ __all__ = [
     "ChatRequest",
     "ChatResponse",
     # Document schemas
-    "DocumentUploadRequest",
-    "DocumentUploadResponse",
-    "DocumentIngestRequest",
     "DocumentIngestResponse",
     "DocumentRemoveRequest",
     "DocumentRemoveResponse",

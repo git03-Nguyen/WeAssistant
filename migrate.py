@@ -10,8 +10,10 @@ sys.path.insert(0, str(Path(__file__).parent))
 
 from app.utils.init_db import (
     create_chat_history_tables,
+    create_qdrant_collection,
     create_tables,
     drop_chat_history_tables,
+    drop_qdrant_collection_func,
     drop_tables,
     initialize_database,
 )
@@ -20,13 +22,19 @@ from app.utils.init_db import (
 async def main():
     """Main migration script."""
     if len(sys.argv) < 2:
-        print("Usage: python migrate.py [init|create|drop|chat-init|chat-drop]")
+        print(
+            "Usage: python migrate.py [init|create|drop|chat-init|chat-drop|qdrant-init|qdrant-drop]"
+        )
         print("\nCommands:")
-        print("  init       - Initialize all database tables (recommended)")
-        print("  create     - Create only main application tables")
-        print("  chat-init  - Create only chat history tables")
-        print("  drop       - Drop all main application tables")
-        print("  chat-drop  - Drop only chat history tables")
+        print(
+            "  init        - Initialize all database tables and collections (recommended)"
+        )
+        print("  create      - Create only main application tables")
+        print("  chat-init   - Create only chat history tables")
+        print("  qdrant-init - Create only Qdrant collection")
+        print("  drop        - Drop all main application tables")
+        print("  chat-drop   - Drop only chat history tables")
+        print("  qdrant-drop - Drop only Qdrant collection")
         return
 
     command = sys.argv[1].lower()
@@ -44,6 +52,10 @@ async def main():
             print("💬 Creating chat history tables...")
             await create_chat_history_tables()
 
+        elif command == "qdrant-init":
+            print("📊 Creating Qdrant collection...")
+            await create_qdrant_collection()
+
         elif command == "drop":
             print("⚠️  Dropping main application tables...")
             confirm = input("Are you sure? This will delete all data! (yes/no): ")
@@ -59,6 +71,16 @@ async def main():
             )
             if confirm.lower() == "yes":
                 await drop_chat_history_tables()
+            else:
+                print("❌ Operation cancelled")
+
+        elif command == "qdrant-drop":
+            print("⚠️  Dropping Qdrant collection...")
+            confirm = input(
+                "Are you sure? This will delete all vector data! (yes/no): "
+            )
+            if confirm.lower() == "yes":
+                await drop_qdrant_collection_func()
             else:
                 print("❌ Operation cancelled")
 

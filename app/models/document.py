@@ -25,12 +25,12 @@ class Document(BaseModel):
     __tablename__ = "documents"
 
     filename: Mapped[str] = mapped_column(String(255), nullable=False)
+    title: Mapped[str] = mapped_column(String(255), nullable=False)
     content_type: Mapped[Optional[str]] = mapped_column(String(100), nullable=True)
     size_bytes: Mapped[Optional[int]] = mapped_column(Integer, nullable=True)
     status: Mapped[str] = mapped_column(
         String(20), default=DocumentStatus.NONE, nullable=False
     )
-    content: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
     doc_metadata: Mapped[Optional[dict]] = mapped_column(JSON, nullable=True)
     chunks_created: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
     error_message: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
@@ -41,6 +41,4 @@ class Document(BaseModel):
     )
 
     def __repr__(self) -> str:
-        return (
-            f"<Document(id={self.id}, filename={self.filename}, status={self.status})>"
-        )
+        return f"<Document(id={self.id}, filename={self.filename}, title={self.title}, status={self.status})>"

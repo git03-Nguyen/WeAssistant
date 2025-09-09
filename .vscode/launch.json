@@ -1,0 +1,60 @@
+{
+    "version": "0.2.0",
+    "configurations": [
+        {
+            "name": "Debug FastAPI App",
+            "type": "debugpy",
+            "request": "launch",
+            "program": "${workspaceFolder}/.venv/bin/uvicorn",
+            "args": [
+                "app.main:app",
+                "--host", "0.0.0.0",
+                "--port", "10000",
+                "--reload"
+            ],
+            "console": "integratedTerminal",
+            "cwd": "${workspaceFolder}",
+            "env": {
+                "PYTHONPATH": "${workspaceFolder}"
+            },
+            "python": "${workspaceFolder}/.venv/bin/python",
+            "autoReload": {
+                "enable": true
+            },
+            "django": false,
+            "justMyCode": false
+        },
+        {
+            "name": "Debug FastAPI App (No Reload)",
+            "type": "debugpy",
+            "request": "launch",
+            "program": "${workspaceFolder}/.venv/bin/uvicorn",
+            "args": [
+                "app.main:app",
+                "--host", "0.0.0.0",
+                "--port", "10000"
+            ],
+            "console": "integratedTerminal",
+            "cwd": "${workspaceFolder}",
+            "env": {
+                "PYTHONPATH": "${workspaceFolder}"
+            },
+            "python": "${workspaceFolder}/.venv/bin/python",
+            "django": false,
+            "justMyCode": false
+        },
+        {
+            "name": "Debug Current Python File",
+            "type": "debugpy",
+            "request": "launch",
+            "program": "${file}",
+            "console": "integratedTerminal",
+            "cwd": "${workspaceFolder}",
+            "env": {
+                "PYTHONPATH": "${workspaceFolder}"
+            },
+            "python": "${workspaceFolder}/.venv/bin/python",
+            "justMyCode": false
+        }
+    ]
+}

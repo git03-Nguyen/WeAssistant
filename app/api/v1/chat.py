@@ -9,7 +9,7 @@ from fastapi.responses import StreamingResponse
 from app.api.deps import get_chat_orchestrator
 from app.core.exceptions import WeAssistantException
 from app.schemas.chat import ChatRequest, ChatResponse
-from app.schemas.message import MessageResponse
+from app.schemas.message import BaseMessageResponse
 from app.services.orchestrator import ChatOrchestrator
 
 router = APIRouter()
@@ -27,8 +27,8 @@ async def chat_restful(
 
         return ChatResponse(
             thread_id=result["thread_id"],
-            user_message=MessageResponse.model_validate(result["user_message"]),
-            assistant_message=MessageResponse.model_validate(
+            user_message=BaseMessageResponse.model_validate(result["user_message"]),
+            assistant_message=BaseMessageResponse.model_validate(
                 result["assistant_message"]
             ),
             intent=result["intent"],
@@ -64,7 +64,7 @@ async def chat_stream(
                 yield f"data: {json.dumps({'type': 'thread_created', 'thread_id': result['thread_id']})}\n\n"
 
             # Send user message confirmation
-            yield f"data: {json.dumps({'type': 'user_message', 'message': MessageResponse.model_validate(result['user_message']).model_dump()})}\n\n"
+            yield f"data: {json.dumps({'type': 'user_message', 'message': BaseMessageResponse.model_validate(result['user_message']).model_dump()})}\n\n"
 
             # Send intent detection
             yield f"data: {json.dumps({'type': 'intent_detected', 'intent': result['intent'], 'confidence': result['confidence']})}\n\n"
@@ -85,7 +85,7 @@ async def chat_stream(
                     await asyncio.sleep(0.05)
 
             # Send final completion message
-            yield f"data: {json.dumps({'type': 'complete', 'assistant_message': MessageResponse.model_validate(result['assistant_message']).model_dump(), 'intent': result['intent'], 'confidence': result['confidence'], 'profile_used': result['profile_used']})}\n\n"
+            yield f"data: {json.dumps({'type': 'complete', 'assistant_message': BaseMessageResponse.model_validate(result['assistant_message']).model_dump(), 'intent': result['intent'], 'confidence': result['confidence'], 'profile_used': result['profile_used']})}\n\n"
 
         except Exception as e:
             yield f"data: {json.dumps({'error': str(e)})}\n\n"

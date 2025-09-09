@@ -1,24 +1,16 @@
 """Document schemas for API requests and responses."""
 
 from datetime import datetime
-from typing import Dict, List, Optional
+from typing import List, Optional
 
 from pydantic import BaseModel, Field
 
 
-class DocumentUploadRequest(BaseModel):
-    """Request to upload a new document."""
+class DocumentIngestForm(BaseModel):
+    """Form data for document ingestion."""
 
-    filename: str = Field(..., min_length=1, max_length=255)
-    content: str = Field(..., min_length=1)
-    content_type: Optional[str] = Field(None, max_length=100)
-    metadata: Optional[Dict[str, str]] = Field(default_factory=dict)
-
-
-class DocumentIngestRequest(BaseModel):
-    """Request to ingest an uploaded document."""
-
-    document_id: str = Field(..., description="Document ID to ingest")
+    title: str = Field(..., min_length=1, max_length=255)
+    metadata: Optional[str] = Field(None, description="JSON string of metadata")
 
 
 class DocumentResponse(BaseModel):
@@ -26,6 +18,7 @@ class DocumentResponse(BaseModel):
 
     id: str
     filename: str
+    title: str
     content_type: Optional[str]
     size_bytes: Optional[int]
     status: str
@@ -44,14 +37,6 @@ class DocumentListResponse(BaseModel):
 
     documents: List[DocumentResponse]
     total: int
-
-
-class DocumentUploadResponse(BaseModel):
-    """Response after uploading a document."""
-
-    success: bool
-    document_id: str
-    message: str
 
 
 class DocumentIngestResponse(BaseModel):

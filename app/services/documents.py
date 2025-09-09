@@ -3,12 +3,14 @@
 from datetime import datetime
 from typing import List, Optional
 
+from fastapi import UploadFile
 from sqlalchemy import select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.exceptions import DatabaseError
 from app.models.document import Document, DocumentStatus
 from app.services.rag import RAGService
+from app.utils.file_processor import FileProcessor
 
 
 class DocumentService:
@@ -18,30 +20,71 @@ class DocumentService:
         self.session = session
         self.rag_service = rag_service
 
-    async def create_document(
+    async def ingest_document(
         self,
-        filename: str,
-        content: str,
-        content_type: Optional[str] = None,
-        metadata: Optional[dict] = None,
+        file: UploadFile,
+        title: str,
+        metadata_str: Optional[str] = None,
     ) -> Document:
-        """Create a new document record."""
+        """Create and ingest a document from uploaded file."""
+        if not self.rag_service:
+            raise ValueError("RAG service not available")
+
         try:
+            # Process the uploaded file
+            content, content_type, metadata = await FileProcessor.process_file(
+                file, title, metadata_str
+            )
+
+            filename = file.filename or "unknown"
+
+            # Create document record
             document = Document(
                 filename=filename,
-                content=content,
+                title=title,
                 content_type=content_type,
                 size_bytes=len(content.encode("utf-8")),
-                doc_metadata=metadata or {},
-                status=DocumentStatus.NONE,
+                doc_metadata=metadata,
+                status=DocumentStatus.INGESTING,
             )
 
             self.session.add(document)
-            await self.session.flush()
-            return document
+            await self.session.flush()  # Get the document ID
+
+            try:
+                # Ingest with RAG service
+                rag_metadata = {
+                    "document_id": str(document.id),
+                    "filename": filename,
+                    "title": title,
+                    **metadata,
+                }
+
+                await self.rag_service.ingest_document(
+                    content, content_type, rag_metadata
+                )
+
+                # Calculate chunks (rough estimate)
+                chunks_created = len(content) // 800 + 1
+
+                # Update status to completed
+                await self.update_document_status(
+                    str(document.id),
+                    DocumentStatus.COMPLETED,
+                    chunks_created=chunks_created,
+                )
+                return document
+
+            except Exception as e:
+                # Update status to failed
+                await self.update_document_status(
+                    str(document.id), DocumentStatus.FAILED, error_message=str(e)
+                )
+                raise DatabaseError(f"Failed to ingest document: {e}")
 
         except Exception as e:
-            raise DatabaseError(f"Failed to create document: {e}")
+            await self.session.rollback()
+            raise DatabaseError(f"Failed to create and ingest document: {e}")
 
     async def get_all_documents(self) -> List[Document]:
         """Get all documents."""
@@ -92,50 +135,6 @@ class DocumentService:
 
         except Exception as e:
             raise DatabaseError(f"Failed to update document status: {e}")
-
-    async def ingest_document(self, document_id: str) -> bool:
-        """Process document ingestion with RAG service."""
-        if not self.rag_service:
-            raise ValueError("RAG service not available")
-
-        try:
-            # Get document
-            document = await self.get_document(document_id)
-            if not document:
-                return False
-
-            # Update status to ingesting
-            await self.update_document_status(document_id, DocumentStatus.INGESTING)
-            await self.session.commit()
-
-            try:
-                # Ingest with RAG service
-                content = document.content or ""
-                metadata = document.doc_metadata or {}
-
-                await self.rag_service.ingest_document(content, metadata)
-
-                # Calculate chunks (rough estimate)
-                chunks_created = len(content) // 800 + 1
-
-                # Update status to completed
-                await self.update_document_status(
-                    document_id, DocumentStatus.COMPLETED, chunks_created=chunks_created
-                )
-                await self.session.commit()
-                return True
-
-            except Exception as e:
-                # Update status to failed
-                await self.update_document_status(
-                    document_id, DocumentStatus.FAILED, error_message=str(e)
-                )
-                await self.session.commit()
-                return False
-
-        except Exception as e:
-            await self.session.rollback()
-            raise DatabaseError(f"Failed to ingest document: {e}")
 
     async def remove_document(self, document_id: str) -> bool:
         """Remove document and its vector data."""

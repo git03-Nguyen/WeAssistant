@@ -4,6 +4,7 @@ from sqlalchemy.ext.asyncio import AsyncEngine
 
 from app.models.base import Base
 from app.utils.database import ensure_chat_history_tables, get_async_engine
+from app.utils.qdrant_init import drop_qdrant_collection, ensure_qdrant_collection
 
 
 async def create_tables():
@@ -28,6 +29,16 @@ async def create_chat_history_tables():
         print(f"⚠️ Failed to create chat history tables: {e}")
 
 
+async def create_qdrant_collection():
+    """Create Qdrant collection for vector storage."""
+    try:
+        success = await ensure_qdrant_collection()
+        if not success:
+            print("⚠️ Failed to create Qdrant collection")
+    except Exception as e:
+        print(f"⚠️ Failed to create Qdrant collection: {e}")
+
+
 async def initialize_database():
     """Initialize all database tables and migrations."""
     print("🚀 Initializing database...")
@@ -37,6 +48,9 @@ async def initialize_database():
 
     # Create chat message history tables
     await create_chat_history_tables()
+
+    # Create Qdrant collection
+    await create_qdrant_collection()
 
     print("✅ Database initialization completed")
 
@@ -48,6 +62,7 @@ async def drop_tables():
     async with engine.begin() as conn:
         await conn.run_sync(Base.metadata.drop_all)
     await drop_chat_history_tables()
+    await drop_qdrant_collection_func()
 
     print("✅ Database tables dropped successfully")
 
@@ -65,6 +80,16 @@ async def drop_chat_history_tables():
 
     except Exception as e:
         print(f"⚠️ Failed to drop chat history tables: {e}")
+
+
+async def drop_qdrant_collection_func():
+    """Drop Qdrant collection."""
+    try:
+        success = await drop_qdrant_collection()
+        if not success:
+            print("⚠️ Failed to drop Qdrant collection")
+    except Exception as e:
+        print(f"⚠️ Failed to drop Qdrant collection: {e}")
 
 
 if __name__ == "__main__":

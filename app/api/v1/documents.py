@@ -1,19 +1,18 @@
 """Document management endpoints."""
 
-from fastapi import APIRouter, Depends, HTTPException
+from typing import Optional
+
+from fastapi import APIRouter, Depends, File, Form, HTTPException, UploadFile
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.deps import get_rag_service
 from app.core.exceptions import WeAssistantException
 from app.schemas.document import (
-    DocumentIngestRequest,
     DocumentIngestResponse,
     DocumentListResponse,
     DocumentRemoveRequest,
     DocumentRemoveResponse,
     DocumentResponse,
-    DocumentUploadRequest,
-    DocumentUploadResponse,
 )
 from app.services.documents import DocumentService
 from app.services.rag import RAGService
@@ -30,59 +29,33 @@ def get_document_service(
     return DocumentService(session, rag_service)
 
 
-@router.post("/upload", response_model=DocumentUploadResponse)
-async def upload_document(
-    request: DocumentUploadRequest,
+@router.post("/ingest", response_model=DocumentIngestResponse)
+async def ingest_document(
+    file: UploadFile = File(
+        ..., description="Text or Markdown file (.txt/.md) to ingest (max 10MB)"
+    ),
+    title: str = Form(..., description="Document title"),
+    metadata: Optional[str] = Form(None, description="JSON metadata (optional)"),
     doc_service: DocumentService = Depends(get_document_service),
-) -> DocumentUploadResponse:
-    """Upload a new document."""
+) -> DocumentIngestResponse:
+    """Ingest a text or markdown file into the RAG system."""
     try:
-        document = await doc_service.create_document(
-            filename=request.filename,
-            content=request.content,
-            content_type=request.content_type,
-            metadata=request.metadata,
+        document = await doc_service.ingest_document(
+            file=file,
+            title=title,
+            metadata_str=metadata,
         )
         await doc_service.session.commit()
 
-        return DocumentUploadResponse(
+        return DocumentIngestResponse(
             success=True,
             document_id=str(document.id),
-            message="Document uploaded successfully",
+            chunks_created=document.chunks_created,
+            message="Document successfully ingested",
         )
-    except WeAssistantException as e:
-        raise HTTPException(status_code=e.status_code, detail=e.message)
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Internal server error: {str(e)}")
 
-
-@router.post("/ingest", response_model=DocumentIngestResponse)
-async def ingest_document(
-    request: DocumentIngestRequest,
-    doc_service: DocumentService = Depends(get_document_service),
-) -> DocumentIngestResponse:
-    """Ingest an uploaded document into the RAG system."""
-    try:
-        success = await doc_service.ingest_document(request.document_id)
-
-        if success:
-            # Get updated document info
-            document = await doc_service.get_document(request.document_id)
-            chunks_created = getattr(document, "chunks_created", 0) if document else 0
-
-            return DocumentIngestResponse(
-                success=True,
-                document_id=request.document_id,
-                chunks_created=chunks_created,
-                message="Document successfully ingested",
-            )
-        else:
-            return DocumentIngestResponse(
-                success=False,
-                document_id=request.document_id,
-                message="Failed to ingest document",
-            )
-
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
     except WeAssistantException as e:
         raise HTTPException(status_code=e.status_code, detail=e.message)
     except Exception as e:

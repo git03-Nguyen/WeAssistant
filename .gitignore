@@ -20,9 +20,6 @@ Thumbs.db
 *.sqlite3
 docker-compose.override.yml
 
-# VS Code
-.vscode/
-
 # Testing
 .coverage
 htmlcov/
