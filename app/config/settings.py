@@ -19,6 +19,8 @@ class Settings(BaseSettings):
 
     # Database settings
     database_url: Optional[str] = Field(default=None, alias="DATABASE_URL")
+    db_pool_min_size: int = Field(default=5, alias="DB_POOL_MIN_SIZE")
+    db_pool_max_size: int = Field(default=20, alias="DB_POOL_MAX_SIZE")
 
     # OpenAI settings
     openai_api_key: str = Field(default="", alias="OPENAI_API_KEY")

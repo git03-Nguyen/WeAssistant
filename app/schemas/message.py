@@ -1,6 +1,5 @@
 """Message-related Pydantic schemas for BaseMessage types."""
 
-from typing import Literal
 
 from pydantic import BaseModel, Field
 
@@ -9,18 +8,16 @@ class BaseMessageResponse(BaseModel):
     """Base response schema for LangChain BaseMessage types."""
 
     content: str = Field(..., description="The actual message content")
-    role: Literal["user", "assistant", "system"] = Field(
-        ..., description="Role of the message sender"
-    )
-    type: Literal["human", "ai", "system", "tool", "function"] = Field(
-        ..., description="LangChain message type"
+    type: str = Field(
+        ...,
+        description="Type of message, e.g., 'human', 'ai', 'system'",
+        examples=["human", "ai", "system"],
     )
 
     class Config:
         json_schema_extra = {
             "example": {
                 "content": "Hello, can you help me?",
-                "role": "user",
                 "type": "human",
             }
         }
@@ -38,12 +35,10 @@ class MessageListResponse(BaseModel):
                 "messages": [
                     {
                         "content": "Hello, can you help me?",
-                        "role": "user",
                         "type": "human",
                     },
                     {
                         "content": "Of course! How can I assist you today?",
-                        "role": "assistant",
                         "type": "ai",
                     },
                 ],

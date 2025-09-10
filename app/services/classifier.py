@@ -62,7 +62,7 @@ OTHER: topics unrelated to WMT/trading
 - "weather today", "cooking recipes", "movie recommendations"
 
 Respond JSON only:
-{"intent":"TRIVIAL|FAQ|CONSULTANT|OTHER","confidence":0.9,"subtype":"greeting|thanks|goodbye|null"}""",
+{{"intent":"TRIVIAL|FAQ|CONSULTANT|OTHER","confidence":0.9,"subtype":"greeting|thanks|goodbye|null"}}""",
                 ),
                 ("human", "{message}"),
             ]

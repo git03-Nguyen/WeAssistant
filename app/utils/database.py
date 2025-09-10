@@ -1,9 +1,11 @@
 """Database configuration and session management."""
 
+import asyncio
+from contextlib import asynccontextmanager
 from functools import lru_cache
-from typing import AsyncGenerator
+from typing import AsyncGenerator, Optional
 
-import psycopg
+from psycopg_pool import AsyncConnectionPool
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 
 from app.config.settings import get_settings
@@ -51,17 +53,58 @@ async def get_db() -> AsyncGenerator[AsyncSession, None]:
             await session.close()
 
 
-# PostgreSQL connection utilities for chat history
-@lru_cache(maxsize=1)
-async def get_postgres_connection() -> psycopg.AsyncConnection:
-    """Get async PostgreSQL connection for chat history."""
-    settings = get_settings()
-    conn_string = settings.database_url
+# PostgreSQL connection pool for chat history
+_postgres_pool: Optional[AsyncConnectionPool] = None
 
-    if not conn_string:
-        raise ValueError("Database URL not configured")
 
-    return await psycopg.AsyncConnection.connect(conn_string)
+async def get_postgres_pool() -> AsyncConnectionPool:
+    """Get or create the PostgreSQL connection pool."""
+    global _postgres_pool
+
+    if _postgres_pool is None:
+        settings = get_settings()
+        if not settings.database_url:
+            raise DatabaseError("Database URL not configured")
+
+        _postgres_pool = AsyncConnectionPool(
+            conninfo=settings.database_url,
+            min_size=settings.db_pool_min_size,
+            max_size=settings.db_pool_max_size,
+            open=False,  # Don't open immediately
+        )
+        await _postgres_pool.open()
+
+    return _postgres_pool
+
+
+@asynccontextmanager
+async def get_postgres_connection():
+    """Get a connection from the pool."""
+    pool = await get_postgres_pool()
+    async with pool.connection() as conn:
+        yield conn
+
+
+async def close_postgres_pool():
+    """Close the PostgreSQL connection pool."""
+    global _postgres_pool
+    if _postgres_pool is not None:
+        await _postgres_pool.close()
+        _postgres_pool = None
+
+
+async def cleanup_all_connections():
+    """Close all connection pools (PostgreSQL and OpenAI)."""
+    # Close PostgreSQL pool
+    await close_postgres_pool()
+
+    # Close OpenAI client pool
+    try:
+        from app.services.moderator import close_openai_client
+
+        await close_openai_client()
+    except ImportError:
+        pass  # OpenAI client not available
 
 
 async def ensure_chat_history_tables(table_name: str = "history") -> bool:
@@ -69,8 +112,8 @@ async def ensure_chat_history_tables(table_name: str = "history") -> bool:
     try:
         from langchain_postgres import PostgresChatMessageHistory
 
-        connection = await get_postgres_connection()
-        await PostgresChatMessageHistory.acreate_tables(connection, table_name)
+        async with get_postgres_connection() as connection:
+            await PostgresChatMessageHistory.acreate_tables(connection, table_name)
         return True
     except Exception as e:
         print(f"Warning: Failed to ensure chat history tables: {e}")
@@ -78,5 +121,14 @@ async def ensure_chat_history_tables(table_name: str = "history") -> bool:
 
 
 def clear_postgres_connection_cache():
-    """Clear the cached PostgreSQL connection."""
-    get_postgres_connection.cache_clear()
+    """Clear the cached PostgreSQL connection and close all pools."""
+    try:
+        loop = asyncio.get_event_loop()
+        if loop.is_running():
+            # Schedule the cleanup to run later if we're in an async context
+            asyncio.create_task(cleanup_all_connections())
+        else:
+            # Run the cleanup if we're not in an async context
+            asyncio.run(cleanup_all_connections())
+    except Exception:
+        pass  # Best effort cleanup

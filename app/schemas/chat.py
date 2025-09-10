@@ -36,9 +36,6 @@ class ChatResponse(BaseModel):
     thread_id: str = Field(
         ..., description="Thread ID where the conversation is happening"
     )
-    user_message: BaseMessageResponse = Field(
-        ..., description="The user's message that was saved"
-    )
     assistant_message: BaseMessageResponse = Field(
         ..., description="The assistant's response message"
     )
@@ -52,14 +49,8 @@ class ChatResponse(BaseModel):
         json_schema_extra = {
             "example": {
                 "thread_id": "thread-123e4567-e89b-12d3-a456-426614174000",
-                "user_message": {
-                    "content": "How can I start trading?",
-                    "role": "user",
-                    "type": "human",
-                },
                 "assistant_message": {
                     "content": "To start trading, you should first educate yourself about the markets...",
-                    "role": "assistant",
                     "type": "ai",
                 },
                 "intent": "FAQ",

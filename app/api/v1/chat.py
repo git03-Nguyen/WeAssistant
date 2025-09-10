@@ -27,7 +27,6 @@ async def chat_restful(
 
         return ChatResponse(
             thread_id=result["thread_id"],
-            user_message=BaseMessageResponse.model_validate(result["user_message"]),
             assistant_message=BaseMessageResponse.model_validate(
                 result["assistant_message"]
             ),
@@ -62,9 +61,6 @@ async def chat_stream(
             # Send thread info if new thread was created
             if not request.thread_id:
                 yield f"data: {json.dumps({'type': 'thread_created', 'thread_id': result['thread_id']})}\n\n"
-
-            # Send user message confirmation
-            yield f"data: {json.dumps({'type': 'user_message', 'message': BaseMessageResponse.model_validate(result['user_message']).model_dump()})}\n\n"
 
             # Send intent detection
             yield f"data: {json.dumps({'type': 'intent_detected', 'intent': result['intent'], 'confidence': result['confidence']})}\n\n"

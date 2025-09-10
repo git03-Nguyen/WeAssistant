@@ -1,29 +1,50 @@
-"""Content moderation service with caching."""
+"""Content moderation service with caching and connection pooling."""
 
 import hashlib
 from functools import lru_cache
 from typing import Optional
 
+import httpx
 from openai import AsyncOpenAI
 
 from app.config.settings import get_settings
 
+# Global connection pool for OpenAI client
+_openai_client: Optional[AsyncOpenAI] = None
+
+
+def get_openai_client() -> AsyncOpenAI:
+    """Get or create a shared OpenAI client with connection pooling."""
+    global _openai_client
+    if _openai_client is None:
+        settings = get_settings()
+        if not settings.openai_api_key:
+            raise ValueError("OpenAI API key is required for moderation")
+
+        # Create HTTP client with connection pooling
+        http_client = httpx.AsyncClient(
+            limits=httpx.Limits(
+                max_keepalive_connections=10, max_connections=20, keepalive_expiry=30.0
+            ),
+            timeout=30.0,
+        )
+
+        _openai_client = AsyncOpenAI(
+            api_key=settings.openai_api_key, http_client=http_client
+        )
+    return _openai_client
+
 
 class ModeratorService:
-    """Fast content moderation with caching."""
+    """Fast content moderation with caching and pooled connections."""
 
     def __init__(self):
-        self.settings = get_settings()
-        self._client: Optional[AsyncOpenAI] = None
+        pass  # No need to store settings or client
 
     @property
     def client(self) -> AsyncOpenAI:
-        """Lazy initialization of OpenAI client."""
-        if self._client is None:
-            if not self.settings.openai_api_key:
-                raise ValueError("OpenAI API key is required for moderation")
-            self._client = AsyncOpenAI(api_key=self.settings.openai_api_key)
-        return self._client
+        """Get shared OpenAI client with connection pooling."""
+        return get_openai_client()
 
     @lru_cache(maxsize=1000)
     def _get_content_hash(self, content: str) -> str:
@@ -59,3 +80,12 @@ class ModeratorService:
     def clear_cache(cls):
         """Clear moderation cache."""
         cls._moderation_cache.clear()
+
+
+async def close_openai_client():
+    """Close the shared OpenAI client and its connection pool."""
+    global _openai_client
+    if _openai_client is not None:
+        if hasattr(_openai_client, "_client") and _openai_client._client:
+            await _openai_client._client.aclose()
+        _openai_client = None

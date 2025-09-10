@@ -19,7 +19,15 @@ async def lifespan(app: FastAPI):
     yield
 
     # Shutdown
-    print("Shutting down application")
+    print("Shutting down application...")
+    try:
+        from app.utils.database import cleanup_all_connections
+
+        await cleanup_all_connections()
+        print("All connection pools closed successfully")
+    except Exception as e:
+        print(f"Error during cleanup: {e}")
+    print("Application shutdown complete")
 
 
 def create_application() -> FastAPI:
