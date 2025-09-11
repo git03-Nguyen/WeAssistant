@@ -6,42 +6,37 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from app.api import router as api_router
-from app.config.settings import get_settings
+from app.config.settings import SETTINGS
+from app.utils.database import close_db_connections, open_db_connections
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     """Application lifespan events."""
-    # Startup
-    settings = get_settings()
-    print(f"Starting {settings.app_name} v{settings.version}")
-
-    yield
-
-    # Shutdown
-    print("Shutting down application...")
     try:
-        from app.utils.database import cleanup_all_connections
+        # Startup
+        print(f"Starting {SETTINGS.app_name}. debug={SETTINGS.app_debug}")
+        await open_db_connections()
+        print("Application startup complete")
+        yield
 
-        await cleanup_all_connections()
-        print("All connection pools closed successfully")
-    except Exception as e:
-        print(f"Error during cleanup: {e}")
-    print("Application shutdown complete")
+    finally:
+        # Shutdown
+        print("Shutting down application...")
+        await close_db_connections()
+        print("Application shutdown complete")
 
 
 def create_application() -> FastAPI:
     """Create and configure FastAPI application."""
-    settings = get_settings()
 
     app = FastAPI(
-        title=settings.app_name,
-        version=settings.version,
+        title=SETTINGS.app_name,
+        version="0.0.1",
         description="WeMasterTrade ChatBot API",
         lifespan=lifespan,
     )
 
-    # Add CORS middleware
     app.add_middleware(
         CORSMiddleware,
         allow_origins=["*"],  # Configure appropriately for production
@@ -50,14 +45,7 @@ def create_application() -> FastAPI:
         allow_headers=["*"],
     )
 
-    # Include API router
-    app.include_router(api_router, prefix="/api")
-
-    # Add health check endpoint
-    @app.get("/health")
-    async def health_check():
-        """Health check endpoint."""
-        return {"status": "healthy", "service": settings.app_name}
+    app.include_router(api_router)
 
     return app
 

@@ -44,14 +44,8 @@ class DocumentIngestResponse(BaseModel):
 
     success: bool
     document_id: str
-    chunks_created: Optional[int] = None
+    chunk_ids: Optional[list[str]] = None
     message: str
-
-
-class DocumentRemoveRequest(BaseModel):
-    """Request to remove a document."""
-
-    document_id: str = Field(..., description="Document ID to remove")
 
 
 class DocumentRemoveResponse(BaseModel):

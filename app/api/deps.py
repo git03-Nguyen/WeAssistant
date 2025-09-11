@@ -1,55 +1,55 @@
 """Dependency injection for API endpoints."""
 
-from functools import lru_cache
-from typing import Optional
+from contextlib import asynccontextmanager
 
 from fastapi import Depends
-from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.ext.asyncio import (
+    AsyncSession,
+)
 
-from app.services.orchestrator import ChatOrchestrator
-from app.services.rag import RAGService
-from app.services.users import UserService
-from app.utils.database import get_db
-
-
-@lru_cache
-def get_rag_service() -> RAGService:
-    """Get RAG service instance."""
-    return RAGService()
+from app.services.chat_service import ChatService
+from app.services.documents import DocumentService
+from app.services.threads import ThreadService
+from app.utils.database import get_asyncpg_sessionmaker, get_psycopg_pool
 
 
-def get_rag_service_optional() -> Optional[RAGService]:
-    """Get RAG service instance, returns None if not available."""
-    try:
-        return get_rag_service()
-    except Exception:
-        return None
+@asynccontextmanager
+async def aget_asyncpg_session():
+    """AsyncSession backed by asyncpg engine."""
+    async with get_asyncpg_sessionmaker().begin() as session:
+        try:
+            yield session
+        except Exception:
+            await session.rollback()
+            raise
 
 
-def get_user_service(session: AsyncSession = Depends(get_db)) -> UserService:
-    """Get user service instance."""
-    return UserService(session)
+@asynccontextmanager
+async def aget_psycopg_conn():
+    """Get a connection from the psycopg pool."""
+    async with get_psycopg_pool().connection() as conn:
+        try:
+            yield conn
+        except Exception:
+            await conn.rollback()
+            raise
 
 
-def get_chat_orchestrator(
-    session: AsyncSession = Depends(get_db),
-) -> ChatOrchestrator:
-    """Get chat orchestrator instance."""
-    rag_service = get_rag_service_optional()
-    return ChatOrchestrator(session, rag_service)
+def get_document_service(
+    session: AsyncSession = Depends(aget_asyncpg_session),
+) -> DocumentService:
+    """Get document service instance."""
+    return DocumentService(session)
 
 
-# Legacy compatibility aliases
-def get_unified_chat_service(
-    session: AsyncSession = Depends(get_db),
-) -> ChatOrchestrator:
-    """Legacy alias for chat orchestrator."""
-    return get_chat_orchestrator(session)
-
-
-# ThreadService is still needed for thread management operations
-def get_thread_service(session: AsyncSession = Depends(get_db)):
+def get_thread_service(
+    session: AsyncSession = Depends(aget_asyncpg_session),
+) -> ThreadService:
     """Get thread service instance."""
-    from app.services.threads import ThreadService
-
     return ThreadService(session)
+
+def get_chat_service(
+    session: AsyncSession = Depends(aget_asyncpg_session),
+) -> ChatService:
+    """Get chat service instance."""
+    return ChatService(session)

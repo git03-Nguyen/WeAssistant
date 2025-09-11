@@ -7,17 +7,6 @@ from langchain_core.messages import BaseMessage
 from pydantic import BaseModel, Field
 
 
-class ThreadCreateRequest(BaseModel):
-    """Request schema for creating a new thread."""
-
-    user_id: str = Field(..., description="User ID who owns the thread")
-
-    class Config:
-        json_schema_extra = {
-            "example": {"user_id": "user-123e4567-e89b-12d3-a456-426614174000"}
-        }
-
-
 class ThreadResponse(BaseModel):
     """Thread response schema."""
 
@@ -84,9 +73,6 @@ class ThreadListResponse(BaseModel):
     """Response schema for thread list."""
 
     threads: List[ThreadResponse] = Field(..., description="List of threads")
-    total: int = Field(..., description="Total number of threads")
-    page: int = Field(..., description="Current page")
-    size: int = Field(..., description="Page size")
 
     class Config:
         json_schema_extra = {
@@ -100,8 +86,5 @@ class ThreadListResponse(BaseModel):
                         "deleted_at": None,
                     }
                 ],
-                "total": 1,
-                "page": 1,
-                "size": 10,
             }
         }

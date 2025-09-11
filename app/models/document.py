@@ -32,7 +32,7 @@ class Document(BaseModel):
         String(20), default=DocumentStatus.NONE, nullable=False
     )
     doc_metadata: Mapped[Optional[dict]] = mapped_column(JSON, nullable=True)
-    chunks_created: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
+    chunk_ids: Mapped[Optional[list[str]]] = mapped_column(JSON, nullable=True)
     error_message: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
 
     # Additional timestamps beyond BaseModel

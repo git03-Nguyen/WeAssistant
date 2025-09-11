@@ -3,15 +3,17 @@
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.api.deps import aget_asyncpg_session
 from app.core.exceptions import WeAssistantException
 from app.schemas.user import UserCreateRequest, UserResponse
 from app.services.users import UserService
-from app.utils.database import get_db
 
 router = APIRouter()
 
 
-def get_user_service(session: AsyncSession = Depends(get_db)) -> UserService:
+def get_user_service(
+    session: AsyncSession = Depends(aget_asyncpg_session),
+) -> UserService:
     """Get user service instance."""
     return UserService(session)
 

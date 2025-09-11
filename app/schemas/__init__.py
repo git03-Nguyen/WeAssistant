@@ -4,7 +4,6 @@ from app.schemas.chat import ChatRequest, ChatResponse
 from app.schemas.document import (
     DocumentIngestResponse,
     DocumentListResponse,
-    DocumentRemoveRequest,
     DocumentRemoveResponse,
     DocumentResponse,
 )
@@ -13,7 +12,6 @@ from app.schemas.message import (
     MessageListResponse,
 )
 from app.schemas.thread import (
-    ThreadCreateRequest,
     ThreadListResponse,
     ThreadResponse,
     ThreadWithMessagesResponse,
@@ -30,7 +28,6 @@ __all__ = [
     "ChatResponse",
     # Document schemas
     "DocumentIngestResponse",
-    "DocumentRemoveRequest",
     "DocumentRemoveResponse",
     "DocumentListResponse",
     "DocumentResponse",
@@ -39,7 +36,6 @@ __all__ = [
     "UserResponse",
     "UserProfileClassification",
     # Thread schemas
-    "ThreadCreateRequest",
     "ThreadResponse",
     "ThreadWithMessagesResponse",
     "ThreadListResponse",

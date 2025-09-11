@@ -11,7 +11,7 @@ class BaseMessageResponse(BaseModel):
     type: str = Field(
         ...,
         description="Type of message, e.g., 'human', 'ai', 'system'",
-        examples=["human", "ai", "system"],
+        examples=["human", "ai", "system", "tool"],
     )
 
     class Config:
