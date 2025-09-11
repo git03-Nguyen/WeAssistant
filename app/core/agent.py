@@ -1,11 +1,9 @@
 from contextlib import asynccontextmanager
 from functools import lru_cache
-from typing import AsyncGenerator
 
 from langchain.agents.react_agent import AgentStatePydantic, create_agent
 from langchain_core.messages import SystemMessage
 from langchain_openai import ChatOpenAI
-from langgraph.graph.state import CompiledStateGraph
 from pydantic import SecretStr
 
 from app.config.settings import SETTINGS
@@ -40,7 +38,7 @@ class CustomAgentState(AgentStatePydantic):
 
 
 @asynccontextmanager
-async def aget_agent() -> AsyncGenerator[CompiledStateGraph]:
+async def aget_agent():
     """Async context manager for agent with checkpointer."""
     async with aget_psycopg_conn() as conn:
         checkpointer = get_checkpointer(conn)

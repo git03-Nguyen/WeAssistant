@@ -9,7 +9,7 @@ from app.models.base import Base
 from app.utils.database import (
     aget_psycopg_conn,
     close_db_connections,
-    get_async_engine,
+    get_asyncpg_engine,
     open_db_connections,
 )
 
@@ -20,7 +20,7 @@ async def acreate_tables():
     print("Creating database tables...")
     try:
         await open_db_connections()
-        engine = get_async_engine()
+        engine = get_asyncpg_engine()
         async with engine.begin() as conn:
             await conn.execute(
                 text(f"CREATE SCHEMA IF NOT EXISTS {SETTINGS.database_schema};")
@@ -47,7 +47,7 @@ async def adrop_tables():
     print("Dropping database tables...")
     try:
         await open_db_connections()
-        engine = get_async_engine()
+        engine = get_asyncpg_engine()
 
         async with engine.begin() as conn:
             await conn.execute(

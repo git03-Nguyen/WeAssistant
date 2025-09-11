@@ -9,7 +9,7 @@ from langchain_postgres.v2.engine import PGEngine
 from pydantic import SecretStr
 
 from app.config.settings import SETTINGS
-from app.utils.database import get_async_engine
+from app.utils.database import get_asyncpg_engine
 
 
 @lru_cache
@@ -24,7 +24,7 @@ def _get_embeddings():
 @alru_cache
 async def aget_vector_store() -> AsyncPGVectorStore:
     """Get vector store instance."""
-    engine = PGEngine.from_engine(get_async_engine())
+    engine = PGEngine.from_engine(get_asyncpg_engine())
     return await AsyncPGVectorStore.create(
         engine=engine,
         table_name="embeddings",

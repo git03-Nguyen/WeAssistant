@@ -1,28 +1,36 @@
 """Dependency injection for API endpoints."""
 
-from contextlib import asynccontextmanager
-
 from fastapi import Depends
-from sqlalchemy.ext.asyncio import (
-    AsyncSession,
-)
+from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
 from app.services.agent import AgentService
 from app.services.documents import DocumentService
 from app.services.threads import ThreadService
-from app.utils.database import get_asyncpg_sessionmaker
+from app.services.users import UserService
+from app.utils.database import get_asyncpg_engine
 
 
-@asynccontextmanager
 async def aget_asyncpg_session():
     """AsyncSession backed by asyncpg engine."""
-    async with get_asyncpg_sessionmaker().begin() as session:
+    maker = async_sessionmaker(
+        bind=get_asyncpg_engine(),
+        class_=AsyncSession,
+        expire_on_commit=False,
+    )
+    async with maker() as session:
         try:
             yield session
             await session.commit()
         except Exception:
             await session.rollback()
             raise
+
+
+def get_user_service(
+    session: AsyncSession = Depends(aget_asyncpg_session),
+) -> UserService:
+    """Get user service instance."""
+    return UserService(session)
 
 
 def get_document_service(
@@ -37,6 +45,7 @@ def get_thread_service(
 ) -> ThreadService:
     """Get thread service instance."""
     return ThreadService(session)
+
 
 def get_agent_service() -> AgentService:
     """Get chat service instance."""

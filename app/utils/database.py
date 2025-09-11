@@ -9,8 +9,6 @@ from psycopg import AsyncConnection
 from psycopg.rows import DictRow
 from psycopg_pool import AsyncConnectionPool
 from sqlalchemy.ext.asyncio import (
-    AsyncSession,
-    async_sessionmaker,
     create_async_engine,
 )
 
@@ -48,7 +46,7 @@ async def aget_psycopg_conn(*, autocommit: bool = False):
 # ASYNCPG (default SQLAlchemy ORM)
 # ---------------------------------------------------------------------------
 @lru_cache
-def get_async_engine():
+def get_asyncpg_engine():
     """Get or create the global asyncpg engine for SQLAlchemy."""
     return create_async_engine(
         url=SETTINGS.database_url.replace("postgresql://", "postgresql+asyncpg://"),
@@ -56,16 +54,6 @@ def get_async_engine():
         max_overflow=SETTINGS.database_pool_max_size - SETTINGS.database_pool_min_size,
         echo=SETTINGS.app_debug,
     )
-
-@lru_cache
-def get_asyncpg_sessionmaker():
-    """Get or create the global asyncpg sessionmaker for SQLAlchemy."""
-    return async_sessionmaker(
-        bind=get_async_engine(),
-        class_=AsyncSession,
-        expire_on_commit=False,
-    )
-
 
 # ---------------------------------------------------------------------------
 # Startup / Shutdown helpers
@@ -78,4 +66,4 @@ async def open_db_connections() -> None:
 async def close_db_connections() -> None:
     """Close the psycopg connection pool and dispose the asyncpg engine."""
     await get_psycopg_pool().close()
-    await get_async_engine().dispose()
+    await get_asyncpg_engine().dispose()
