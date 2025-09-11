@@ -31,9 +31,9 @@ class Settings(BaseSettings):
     )
 
     # RAG settings
-    rag_chunk_size: int = Field(default=800, alias="RAG_CHUNK_SIZE")
-    rag_chunk_overlap: int = Field(default=100, alias="RAG_CHUNK_OVERLAP")
-    rag_top_k: int = Field(default=3, alias="RAG_TOP_K")
+    rag_chunk_size: int = Field(default=500, alias="RAG_CHUNK_SIZE")
+    rag_chunk_overlap: int = Field(default=200, alias="RAG_CHUNK_OVERLAP")
+    rag_top_k: int = Field(default=2, alias="RAG_TOP_K")
     rag_score_threshold: float = Field(default=0.7, alias="RAG_SCORE_THRESHOLD")
 
     # Cache settings

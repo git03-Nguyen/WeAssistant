@@ -1,14 +1,15 @@
-from contextlib import asynccontextmanager
 from functools import lru_cache
 
 from langchain.agents.react_agent import AgentStatePydantic, create_agent
 from langchain_core.messages import SystemMessage
 from langchain_openai import ChatOpenAI
+from psycopg import AsyncConnection
+from psycopg.rows import DictRow
 from pydantic import SecretStr
 
 from app.config.settings import SETTINGS
 from app.core.checkpoint import get_checkpointer
-from app.utils.database import aget_psycopg_conn
+from app.core.vector_store import retrieve_context
 
 
 @lru_cache
@@ -32,32 +33,30 @@ def _get_llm() -> ChatOpenAI:
     )
 
 class CustomAgentState(AgentStatePydantic):
+    user_name: str
     def __init__(self, **data):
         super().__init__(**data)
         self.user_name = data.get("user_name", "Beloved trader")
 
-
-@asynccontextmanager
-async def aget_agent():
+@lru_cache
+def aget_agent(conn: AsyncConnection[DictRow]):
     """Async context manager for agent with checkpointer."""
-    async with aget_psycopg_conn() as conn:
-        checkpointer = get_checkpointer(conn)
-        model = _get_llm()
-        yield create_agent(
-            model=model,
-            tools=[],
-            state_schema=CustomAgentState,
-            checkpointer=checkpointer,
-            prompt=SystemMessage("You are a helpful AI assistant."),
-            debug=True,
-            name="WeAssistant Agent",
-            # response_format=None,
-            # middleware=[
-            #     SummarizationMiddleware(
-            #         model=model,
-            #         max_tokens_before_summary=SETTINGS.summary_max_context_length,
-            #         messages_to_keep=SETTINGS.summary_max_message_count,
-            #         summary_prompt="Custom prompt for summarization...",
-            #     ),
-            # ],
-        )
+    model = _get_llm()
+    return create_agent(
+        model=model,
+        tools=[retrieve_context],
+        state_schema=CustomAgentState,
+        checkpointer=get_checkpointer(conn),
+        prompt=SystemMessage("You are a helpful AI assistant."),
+        debug=True,
+        name="WeAssistant Agent",
+        # response_format=None,
+        # middleware=[
+        #     SummarizationMiddleware(
+        #         model=model,
+        #         max_tokens_before_summary=SETTINGS.summary_max_context_length,
+        #         messages_to_keep=SETTINGS.summary_max_message_count,
+        #         summary_prompt="Custom prompt for summarization...",
+        #     ),
+        # ],
+    )

@@ -3,11 +3,11 @@
 from langchain_postgres.v2.engine import PGEngine
 from sqlalchemy import text
 
+from app.api.deps import aget_psycopg_conn
 from app.config.settings import SETTINGS, setup_settings
 from app.core.checkpoint import get_checkpointer
 from app.models.base import Base
 from app.utils.database import (
-    aget_psycopg_conn,
     close_db_connections,
     get_asyncpg_engine,
     open_db_connections,
@@ -28,8 +28,8 @@ async def acreate_tables():
             await conn.run_sync(Base.metadata.create_all)
             await conn.commit()
 
-        async with aget_psycopg_conn(autocommit=True) as conn:
-            await get_checkpointer(conn).setup()
+            psycopg_conn = await anext(aget_psycopg_conn(autocommit=True))
+            await get_checkpointer(psycopg_conn).setup()
         await PGEngine.from_engine(engine).ainit_vectorstore_table(
             table_name="embeddings",
             vector_size=3072,

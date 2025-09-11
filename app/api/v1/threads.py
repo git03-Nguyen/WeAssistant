@@ -2,12 +2,13 @@
 
 from fastapi import APIRouter, Depends, HTTPException
 
-from app.api.deps import get_thread_service
+from app.api.deps import get_agent_service, get_thread_service
 from app.schemas.thread import (
     ThreadListResponse,
     ThreadResponse,
     ThreadWithMessagesResponse,
 )
+from app.services.agent import AgentService
 from app.services.threads import ThreadService
 
 router = APIRouter()
@@ -34,16 +35,17 @@ async def get_thread_history(
     thread_id: str,
     *,
     thread_service: ThreadService = Depends(get_thread_service),
+    agent_service: AgentService = Depends(get_agent_service),
 ) -> ThreadWithMessagesResponse:
     """Get thread history using RAG-enhanced retrieval."""
     try:
         # Get thread info first
-        thread = await thread_service.aget_thread(thread_id)
+        thread = await thread_service.aget_thread(thread_id, None)
         if not thread:
             raise HTTPException(status_code=404, detail="Thread not found")
 
         # Get messages using the orchestrator for enhanced retrieval
-        messages = []
+        messages = await agent_service.aget_history_chat(thread_id)
 
         # Combine thread info with messages
         thread_data = {

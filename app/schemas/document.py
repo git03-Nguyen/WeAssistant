@@ -15,7 +15,7 @@ class DocumentResponse(BaseModel):
     content_type: Optional[str]
     size_bytes: Optional[int]
     status: str
-    chunks_created: int
+    chunk_ids: list[str]
     error_message: Optional[str]
     created_at: datetime
     updated_at: Optional[datetime]
