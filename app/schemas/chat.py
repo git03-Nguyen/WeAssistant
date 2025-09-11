@@ -1,6 +1,5 @@
 """Chat-related Pydantic schemas."""
 
-from typing import Optional
 
 from pydantic import BaseModel, Field
 
@@ -10,13 +9,13 @@ from app.schemas.message import BaseMessageResponse
 class ChatRequest(BaseModel):
     """Chat request schema."""
 
-    thread_id: Optional[str] = Field(
+    thread_id: str | None = Field(
         default=None,
         description="Thread ID for conversation context. If not provided, a new thread will be created.",
     )
-    user_id: Optional[str] = Field(
-        default=None,
-        description="User ID for personalized responses. Required if thread_id is not provided.",
+    user_id: str = Field(
+        ...,
+        description="User ID for personalized responses and context",
     )
     message: str = Field(..., min_length=1, max_length=1000, description="User message")
 
@@ -36,25 +35,19 @@ class ChatResponse(BaseModel):
     thread_id: str = Field(
         ..., description="Thread ID where the conversation is happening"
     )
-    assistant_message: BaseMessageResponse = Field(
-        ..., description="The assistant's response message"
-    )
-    intent: str = Field(..., description="Detected user intent")
-    confidence: float = Field(..., ge=0, le=1, description="Intent confidence score")
-    profile_used: Optional[str] = Field(
-        default=None, description="User profile classification if applicable"
+    messages: list[BaseMessageResponse] = Field(
+        ..., description="The assistant's response messages"
     )
 
     class Config:
         json_schema_extra = {
             "example": {
                 "thread_id": "thread-123e4567-e89b-12d3-a456-426614174000",
-                "assistant_message": {
-                    "content": "To start trading, you should first educate yourself about the markets...",
-                    "type": "ai",
-                },
-                "intent": "FAQ",
-                "confidence": 0.95,
-                "profile_used": "newbie",
+                "messages": [
+                    {
+                        "type": "ai",
+                        "content": "To start trading, you should first educate yourself about the markets...",
+                    },
+                ],
             }
         }

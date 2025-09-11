@@ -29,9 +29,6 @@ class Settings(BaseSettings):
     openai_embed_model: str = Field(
         default="text-embedding-3-large", alias="OPENAI_EMBED_MODEL"
     )
-    openai_max_context_length: int = Field(
-        default=5000, alias="OPENAI_MAX_CONTEXT_LENGTH"
-    )
 
     # RAG settings
     rag_chunk_size: int = Field(default=800, alias="RAG_CHUNK_SIZE")
@@ -43,6 +40,13 @@ class Settings(BaseSettings):
     cache_ttl_minutes: int = Field(default=10, alias="CACHE_TTL_MINUTES")
     cache_max_count: int = Field(default=100, alias="CACHE_MAX_COUNT")
 
+    # Summarization settings
+    summary_max_context_length: int = Field(
+        default=5000, alias="SUMMARY_MAX_CONTEXT_LENGTH"
+    )
+    summary_max_message_count: int = Field(
+        default=20, alias="SUMMARY_MAX_MESSAGE_COUNT"
+    )
 
 def setup_settings() -> Settings:
     """Get cached settings instance."""

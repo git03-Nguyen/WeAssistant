@@ -49,13 +49,13 @@ class DocumentService:
             chunk_ids = await aadd_documents(content, metadata)
             document.chunk_ids = chunk_ids
             document.status = DocumentStatus.COMPLETED
-            await self.session.commit()
+            await self.session.flush()
             await self.session.refresh(document)
             return document
         except Exception as e:
             document.status = DocumentStatus.FAILED
             document.error_message = str(e)
-            await self.session.commit()
+            await self.session.flush()
             await self.session.refresh(document)
             return document
 
@@ -77,5 +77,5 @@ class DocumentService:
 
         await adelete_embedded_chunks(document.chunk_ids or [])
         await self.session.delete(document)
-        await self.session.commit()
+        await self.session.flush()
         return True

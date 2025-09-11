@@ -3,8 +3,9 @@
 from datetime import datetime
 from typing import List, Optional
 
-from langchain_core.messages import BaseMessage
 from pydantic import BaseModel, Field
+
+from app.schemas.message import BaseMessageResponse
 
 
 class ThreadResponse(BaseModel):
@@ -41,7 +42,7 @@ class ThreadWithMessagesResponse(BaseModel):
     deleted_at: Optional[datetime] = Field(
         None, description="Deletion date if soft deleted"
     )
-    messages: list[BaseMessage] = Field(
+    messages: list[BaseMessageResponse] = Field(
         default_factory=list, description="Messages in the thread"
     )
 

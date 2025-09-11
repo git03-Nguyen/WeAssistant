@@ -3,14 +3,7 @@
 from datetime import datetime
 from typing import List, Optional
 
-from pydantic import BaseModel, Field
-
-
-class DocumentIngestForm(BaseModel):
-    """Form data for document ingestion."""
-
-    title: str = Field(..., min_length=1, max_length=255)
-    metadata: Optional[str] = Field(None, description="JSON string of metadata")
+from pydantic import BaseModel
 
 
 class DocumentResponse(BaseModel):

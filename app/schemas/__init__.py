@@ -9,7 +9,6 @@ from app.schemas.document import (
 )
 from app.schemas.message import (
     BaseMessageResponse,
-    MessageListResponse,
 )
 from app.schemas.thread import (
     ThreadListResponse,
@@ -18,7 +17,6 @@ from app.schemas.thread import (
 )
 from app.schemas.user import (
     UserCreateRequest,
-    UserProfileClassification,
     UserResponse,
 )
 
@@ -34,12 +32,10 @@ __all__ = [
     # User schemas
     "UserCreateRequest",
     "UserResponse",
-    "UserProfileClassification",
     # Thread schemas
     "ThreadResponse",
     "ThreadWithMessagesResponse",
     "ThreadListResponse",
     # Message schemas
     "BaseMessageResponse",
-    "MessageListResponse",
 ]

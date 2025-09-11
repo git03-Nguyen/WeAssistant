@@ -16,17 +16,17 @@ class UserService:
     def __init__(self, session: AsyncSession):
         self.session = session
 
-    async def create_user(self, request: UserCreateRequest) -> User:
+    async def acreate_user(self, request: UserCreateRequest) -> User:
         """Create a new user."""
         try:
             user = User(name=request.name, withdrawed_amount=0.0)
             self.session.add(user)
-            await self.session.commit()
+            await self.session.flush()
             return user
         except Exception as e:
             raise DatabaseError(f"Failed to create user: {e}")
 
-    async def get_user_profile(self, user_id: str) -> Optional[User]:
+    async def aget_user_profile(self, user_id: str) -> Optional[User]:
         """Get user profile by ID."""
         try:
             stmt = (
@@ -37,14 +37,14 @@ class UserService:
         except Exception as e:
             raise DatabaseError(f"Failed to get user profile: {e}")
 
-    async def classify_user_profile(
+    async def aclassify_user_profile(
         self, user_id: Optional[str]
     ) -> Literal["newbie", "average", "good"]:
         """Classify user profile based on data."""
         if not user_id:
             return "newbie"
 
-        user = await self.get_user_profile(user_id)
+        user = await self.aget_user_profile(user_id)
         if not user:
             return "newbie"
 

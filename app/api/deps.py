@@ -7,7 +7,7 @@ from sqlalchemy.ext.asyncio import (
     AsyncSession,
 )
 
-from app.services.chat_service import ChatService
+from app.services.agent import AgentService
 from app.services.documents import DocumentService
 from app.services.threads import ThreadService
 from app.utils.database import get_asyncpg_sessionmaker
@@ -19,6 +19,7 @@ async def aget_asyncpg_session():
     async with get_asyncpg_sessionmaker().begin() as session:
         try:
             yield session
+            await session.commit()
         except Exception:
             await session.rollback()
             raise
@@ -37,8 +38,6 @@ def get_thread_service(
     """Get thread service instance."""
     return ThreadService(session)
 
-def get_chat_service(
-    session: AsyncSession = Depends(aget_asyncpg_session),
-) -> ChatService:
+def get_agent_service() -> AgentService:
     """Get chat service instance."""
-    return ChatService(session)
+    return AgentService()

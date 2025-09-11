@@ -1,7 +1,7 @@
 """User-related Pydantic schemas."""
 
 from datetime import datetime
-from typing import Literal, Optional
+from typing import Optional
 
 from pydantic import BaseModel, Field
 
@@ -39,14 +39,3 @@ class UserResponse(BaseModel):
                 "deleted_at": None,
             }
         }
-
-
-class UserProfileClassification(BaseModel):
-    """User profile classification result."""
-
-    classification: Literal["newbie", "average", "good"] = Field(
-        ..., description="User classification based on profile"
-    )
-
-    class Config:
-        json_schema_extra = {"example": {"classification": "average"}}

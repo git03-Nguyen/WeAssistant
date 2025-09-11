@@ -25,7 +25,7 @@ async def create_user(
 ) -> UserResponse:
     """Create a new user."""
     try:
-        user = await user_service.create_user(request)
+        user = await user_service.acreate_user(request)
         return UserResponse.model_validate(user)
     except WeAssistantException as e:
         raise HTTPException(status_code=e.status_code, detail=e.message)

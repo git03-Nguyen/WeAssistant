@@ -20,12 +20,14 @@ class ThreadService:
         try:
             thread = Thread(user_id=user_id)
             self.session.add(thread)
-            await self.session.commit()
+            await self.session.flush()
             return thread
         except Exception as e:
             raise DatabaseError(f"Failed to create thread: {e}")
 
-    async def aget_thread(self, thread_id: str) -> Optional[Thread]:
+    async def aget_thread(
+        self, thread_id: str, user_id: str | None
+    ) -> Optional[Thread]:
         """Get thread by ID."""
         try:
             stmt = (
@@ -33,6 +35,8 @@ class ThreadService:
                 .where(Thread.id == thread_id)
                 .where(Thread.deleted_at.is_(None))
             )
+            if user_id:
+                stmt = stmt.where(Thread.user_id == user_id)
             result = await self.session.execute(stmt)
             return result.scalar_one_or_none()
         except Exception as e:
