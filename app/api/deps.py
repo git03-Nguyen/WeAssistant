@@ -10,7 +10,7 @@ from sqlalchemy.ext.asyncio import (
 from app.services.chat_service import ChatService
 from app.services.documents import DocumentService
 from app.services.threads import ThreadService
-from app.utils.database import get_asyncpg_sessionmaker, get_psycopg_pool
+from app.utils.database import get_asyncpg_sessionmaker
 
 
 @asynccontextmanager
@@ -21,17 +21,6 @@ async def aget_asyncpg_session():
             yield session
         except Exception:
             await session.rollback()
-            raise
-
-
-@asynccontextmanager
-async def aget_psycopg_conn():
-    """Get a connection from the psycopg pool."""
-    async with get_psycopg_pool().connection() as conn:
-        try:
-            yield conn
-        except Exception:
-            await conn.rollback()
             raise
 
 

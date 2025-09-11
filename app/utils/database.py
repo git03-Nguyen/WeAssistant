@@ -2,6 +2,7 @@
 Centralised DB helpers for BOTH drivers: psycopg 3 and asyncpg (SQLAlchemy).
 """
 
+from contextlib import asynccontextmanager
 from functools import lru_cache
 
 from psycopg import AsyncConnection
@@ -28,6 +29,19 @@ def get_psycopg_pool() -> AsyncConnectionPool[AsyncConnection[DictRow]]:
         max_size=SETTINGS.database_pool_max_size,
         open=False,
     )
+
+
+@asynccontextmanager
+async def aget_psycopg_conn(*, autocommit: bool = False):
+    """Get a connection from the psycopg pool."""
+    conn = await get_psycopg_pool().getconn()
+    bak_autocommit = conn.autocommit
+    try:
+        await conn.set_autocommit(autocommit)
+        yield conn
+    finally:
+        await conn.set_autocommit(bak_autocommit)
+        await get_psycopg_pool().putconn(conn)
 
 
 # ---------------------------------------------------------------------------

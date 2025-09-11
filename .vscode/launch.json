@@ -48,7 +48,6 @@
             "type": "debugpy",
             "request": "launch",
             "program": "${file}",
-            "args": ["create"],
             "console": "integratedTerminal",
             "cwd": "${workspaceFolder}",
             "env": {
