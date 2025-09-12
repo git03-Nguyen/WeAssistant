@@ -27,17 +27,21 @@ async def aget_asyncpg_session():
             await session.rollback()
             raise
 
+
 async def aget_psycopg_conn(*, autocommit: bool = False):
     """Get a connection from the psycopg pool."""
-    conn = await get_psycopg_pool().getconn()
-    bak_autocommit = conn.autocommit
-    try:
-        await conn.set_autocommit(autocommit)
-        yield conn
-    finally:
-        if autocommit != bak_autocommit:
-            await conn.set_autocommit(bak_autocommit)
-        await get_psycopg_pool().putconn(conn)
+    async with get_psycopg_pool().connection() as conn:
+        bak_autocommit = conn.autocommit
+        try:
+            await conn.set_autocommit(autocommit)
+            yield conn
+        except Exception:
+            await conn.rollback()
+            raise
+        finally:
+            if autocommit != bak_autocommit:
+                await conn.set_autocommit(bak_autocommit)
+
 
 def get_user_service(
     session: AsyncSession = Depends(aget_asyncpg_session),

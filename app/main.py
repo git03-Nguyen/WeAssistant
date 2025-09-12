@@ -17,7 +17,7 @@ async def lifespan(app: FastAPI):
         # Startup
         print(f"Starting {SETTINGS.app_name}. debug={SETTINGS.app_debug}")
         await open_db_connections()
-        print("Application startup complete")
+        print("Application startup completess")
         yield
 
     finally:

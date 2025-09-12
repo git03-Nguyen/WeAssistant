@@ -5,7 +5,6 @@ from fastapi import APIRouter, Depends, HTTPException
 from app.api.deps import get_agent_service, get_thread_service
 from app.api.v1.users import get_user_service
 from app.schemas.chat import ChatRequest, ChatResponse
-from app.schemas.message import BaseMessageResponse
 from app.services.agent import AgentService
 from app.services.threads import ThreadService
 from app.services.users import UserService
@@ -46,7 +45,7 @@ async def chat_restful(
 
         return ChatResponse(
             thread_id=thread.id,
-            messages=[BaseMessageResponse(type="ai", content=responses)],
+            messages=[responses] if responses else [],
         )
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Internal server error: {str(e)}")

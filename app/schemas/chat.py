@@ -1,9 +1,8 @@
 """Chat-related Pydantic schemas."""
 
 
+from langchain_core.messages import BaseMessage
 from pydantic import BaseModel, Field
-
-from app.schemas.message import BaseMessageResponse
 
 
 class ChatRequest(BaseModel):
@@ -35,7 +34,7 @@ class ChatResponse(BaseModel):
     thread_id: str = Field(
         ..., description="Thread ID where the conversation is happening"
     )
-    messages: list[BaseMessageResponse] = Field(
+    messages: list[BaseMessage] = Field(
         ..., description="The assistant's response messages"
     )
 
