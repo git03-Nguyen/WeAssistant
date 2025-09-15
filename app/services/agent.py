@@ -1,5 +1,7 @@
 from pprint import pprint
+from typing import AsyncGenerator
 
+from langchain.agents import AgentState
 from langchain_core.callbacks import (
     get_usage_metadata_callback,
 )
@@ -10,7 +12,7 @@ from psycopg import AsyncConnection
 from psycopg.rows import DictRow
 
 from app.core.agent import get_agent
-from app.core.state import AIResponse, HistoryMessageState
+from app.core.state import HistoryMessageState
 
 
 class AgentService:
@@ -41,7 +43,7 @@ class AgentService:
                 recursion_limit=25,
                 callbacks=[usage_callback],
             )
-            input = self._create_new_state(user_name, user_input)
+            input = self._create_new_state(user_input)
             agent = get_agent(self.conn)
             responses = await agent.ainvoke(
                 input=input,
@@ -60,10 +62,37 @@ class AgentService:
                 return last_message
             return None
 
-    def _create_new_state(self, user_name: str, user_input: str) -> HistoryMessageState:
+    async def astream_agent_response(
+        self,
+        user_input: str,
+        thread_id: str,
+    ) -> AsyncGenerator[AgentState, None]:
+        """Stream agent response to user input."""
+
+        with get_usage_metadata_callback() as usage_callback:
+            config = RunnableConfig(
+                configurable={"thread_id": thread_id},
+                recursion_limit=25,
+                callbacks=[usage_callback],
+            )
+            input = self._create_new_state(user_input)
+            agent = get_agent(self.conn)
+            async for responses in agent.astream(
+                input=input,
+                config=config,
+                stream_mode="messages",
+            ):
+                if isinstance(responses[0], AIMessageChunk):
+                    print(responses[0])
+                    yield responses[0]
+
+            await self.conn.commit()
+            print("-------------------------------")
+            pprint(usage_callback.usage_metadata)
+
+    def _create_new_state(self, user_input: str) -> HistoryMessageState:
         """Create a new agent state with the user's input."""
         return {
             "messages": [HumanMessage(content=user_input)],
             "history_messages": [],
-            "structured_response": AIResponse(text="", sources=[]),
         }
