@@ -5,6 +5,8 @@ from typing import Any, List, Optional
 
 from pydantic import BaseModel, Field
 
+from app.core.state import CustomUsageMetadata
+
 
 class ThreadResponse(BaseModel):
     """Thread response schema."""
@@ -83,5 +85,37 @@ class ThreadListResponse(BaseModel):
                         "deleted_at": None,
                     }
                 ],
+            }
+        }
+
+class ThreadUsageResponse(BaseModel):
+    """Thread usage statistics schema."""
+
+    thread_id: str = Field(..., description="Thread ID")
+    user_id: str = Field(..., description="User ID who owns the thread")
+    usage_metadata: CustomUsageMetadata | None = Field(
+        ..., description="Total number of tokens used in the thread"
+    )
+    created_at: datetime = Field(..., description="Thread creation date")
+    updated_at: datetime = Field(..., description="Last update date")
+
+    est_cost: float = Field(0.0, description="Estimated cost based on token usage")
+    est_cost_vnd: float = Field(0.0, description="Estimated cost in VND")
+
+    class Config:
+        from_attributes = True
+        json_schema_extra = {
+            "example": {
+                "thread_id": "thread-123e4567-e89b-12d3-a456-426614174000",
+                "user_id": "user-123e4567-e89b-12d3-a456-426614174000",
+                "usage_metadata": {
+                    "input_tokens": 1500,
+                    "output_tokens": 3000,
+                    "total_tokens": 4500,
+                    "input_token_details": {},
+                    "output_token_details": {},
+                },
+                "created_at": "2024-01-15T10:30:00Z",
+                "updated_at": "2024-01-15T10:30:00Z",
             }
         }

@@ -11,7 +11,7 @@ from psycopg import AsyncConnection
 from psycopg.rows import DictRow
 
 from app.core.agent import get_agent
-from app.core.state import HistoryMessageState
+from app.core.state import CustomUsageMetadata, HistoryMessageState
 
 
 class AgentService:
@@ -94,3 +94,15 @@ class AgentService:
             "history_messages": [],
             "token_usage": None,
         }
+
+    async def aget_thread_usage(self, thread_id: str) -> CustomUsageMetadata | None:
+        """Get token usage statistics for a thread."""
+        agent = get_agent(self.conn)
+        async for state in agent.aget_state_history(
+            config=RunnableConfig(configurable={"thread_id": thread_id})
+        ):
+            usage = state.values["token_usage"]
+            if usage:
+                return usage
+            else:
+                return None
