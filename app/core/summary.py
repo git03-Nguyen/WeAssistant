@@ -52,16 +52,11 @@ Messages to summarize:
 {messages}
 </messages>"""
 
-SUMMARY_PREFIX = "## Previous conversation summary:"
-
-_DEFAULT_TRIM_TOKEN_LIMIT = 2500
-_DEFAULT_FALLBACK_MESSAGE_COUNT = 15
+_DEFAULT_FALLBACK_MESSAGE_COUNT = 10
 _SEARCH_RANGE_FOR_TOOL_PAIRS = 5
 
-max_tokens_before_summary = 3000
+reach_token_to_summary = SETTINGS.summary_max_context_token
 messages_to_keep = SETTINGS.summary_max_message_count
-summary_prompt = DEFAULT_SUMMARY_PROMPT
-summary_prefix = SUMMARY_PREFIX
 
 
 def summarize_messages(state: HistoryMessageState) -> HistoryMessageState | None:
@@ -70,10 +65,7 @@ def summarize_messages(state: HistoryMessageState) -> HistoryMessageState | None
     _ensure_message_ids(messages)
 
     total_tokens = count_tokens_approximately(messages)
-    if (
-        max_tokens_before_summary is not None
-        and total_tokens < max_tokens_before_summary
-    ):
+    if reach_token_to_summary is not None and total_tokens < reach_token_to_summary:
         return None
 
     cutoff_index = _find_safe_cutoff(messages)
@@ -210,7 +202,9 @@ def _create_summary(
         return "Previous conversation was too long to summarize.", None
 
     try:
-        response = model.invoke(summary_prompt.format(messages=trimmed_messages))
+        response = model.invoke(
+            DEFAULT_SUMMARY_PROMPT.format(messages=trimmed_messages)
+        )
         summary_text = response.content[-1].get("text", "").strip()  # type: ignore
         usage_metadata = getattr(response, "usage_metadata", None)
         return summary_text, usage_metadata
@@ -225,7 +219,7 @@ def _trim_messages_for_summary(
     try:
         return trim_messages(
             messages,
-            max_tokens=_DEFAULT_TRIM_TOKEN_LIMIT,
+            max_tokens=reach_token_to_summary,
             token_counter=count_tokens_approximately,
             start_on="human",
             strategy="last",
