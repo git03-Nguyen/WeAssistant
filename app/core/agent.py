@@ -7,7 +7,7 @@ from psycopg.rows import DictRow
 
 from app.core.checkpoint import get_checkpointer
 from app.core.llm import get_llm
-from app.core.state import HistoryMessageState
+from app.core.state import HistoryMessageState, add_usage
 from app.core.summary import summarize_messages
 from app.core.vector_store import retrieve_context
 
@@ -109,5 +109,8 @@ def history_message_post_hook(state: HistoryMessageState) -> HistoryMessageState
     )
     if last_message:
         state["history_messages"].append(last_message)
+        state["token_usage"] = add_usage(
+            state.get("token_usage"), getattr(last_message, "usage_metadata", None)
+        )
 
     return state

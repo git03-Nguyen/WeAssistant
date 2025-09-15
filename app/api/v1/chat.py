@@ -39,7 +39,6 @@ async def chat_restful(
 
         thread_id = thread.id
         responses = await agent_service.aget_agent_response(
-            user_name=user.name,
             thread_id=thread_id,
             user_input=request.message,
         )

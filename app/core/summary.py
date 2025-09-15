@@ -2,7 +2,7 @@
 
 import uuid
 from collections.abc import Callable, Iterable, Sequence
-from typing import cast
+from typing import Optional, Tuple, cast
 
 from langchain_core.messages import (
     AIMessage,
@@ -20,7 +20,7 @@ from langgraph.graph.message import (
 
 from app.config.settings import SETTINGS
 from app.core.llm import get_llm
-from app.core.state import HistoryMessageState
+from app.core.state import CustomUsageMetadata, HistoryMessageState, add_usage
 
 TokenCounter = Callable[[Iterable[MessageLikeRepresentation]], int]
 
@@ -85,7 +85,7 @@ def summarize_messages(state: HistoryMessageState) -> HistoryMessageState | None
         messages, cutoff_index
     )
 
-    summary = _create_summary(get_llm(), messages_to_summarize)
+    summary, usage_metadata = _create_summary(get_llm(), messages_to_summarize)
     new_messages = _build_new_messages(summary)
 
     state["messages"] = [
@@ -93,6 +93,8 @@ def summarize_messages(state: HistoryMessageState) -> HistoryMessageState | None
         *new_messages,
         *preserved_messages,
     ]
+
+    state["token_usage"] = add_usage(state.get("token_usage"), usage_metadata)
     return state
 
 
@@ -196,21 +198,24 @@ def _cutoff_separates_tool_pair(
 
 
 def _create_summary(
-    model: ChatOpenAI, messages_to_summarize: Sequence[BaseMessage]
-) -> str:
+    model: ChatOpenAI,
+    messages_to_summarize: Sequence[BaseMessage],
+) -> Tuple[str, Optional[CustomUsageMetadata]]:
     """Generate summary for the given messages."""
     if not messages_to_summarize:
-        return "No previous conversation history."
+        return "No previous conversation history.", None
 
     trimmed_messages = _trim_messages_for_summary(messages_to_summarize)
     if not trimmed_messages:
-        return "Previous conversation was too long to summarize."
+        return "Previous conversation was too long to summarize.", None
 
     try:
         response = model.invoke(summary_prompt.format(messages=trimmed_messages))
-        return response.content[-1].get("text", "").strip()  # type: ignore
+        summary_text = response.content[-1].get("text", "").strip()  # type: ignore
+        usage_metadata = getattr(response, "usage_metadata", None)
+        return summary_text, usage_metadata
     except Exception as e:  # noqa: BLE001
-        return f"Error generating summary: {e!s}"
+        return f"Error generating summary: {e!s}", None
 
 
 def _trim_messages_for_summary(

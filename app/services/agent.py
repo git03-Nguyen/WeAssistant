@@ -1,7 +1,6 @@
 from pprint import pprint
 from typing import AsyncGenerator
 
-from langchain.agents import AgentState
 from langchain_core.callbacks import (
     get_usage_metadata_callback,
 )
@@ -31,7 +30,6 @@ class AgentService:
 
     async def aget_agent_response(
         self,
-        user_name: str,
         user_input: str,
         thread_id: str,
     ) -> BaseMessage | None:
@@ -48,7 +46,6 @@ class AgentService:
             responses = await agent.ainvoke(
                 input=input,
                 config=config,
-                print_mode="debug",
             )
             await self.conn.commit()
 
@@ -66,7 +63,7 @@ class AgentService:
         self,
         user_input: str,
         thread_id: str,
-    ) -> AsyncGenerator[AgentState, None]:
+    ) -> AsyncGenerator[AIMessageChunk, None]:
         """Stream agent response to user input."""
 
         with get_usage_metadata_callback() as usage_callback:
@@ -82,9 +79,9 @@ class AgentService:
                 config=config,
                 stream_mode="messages",
             ):
-                if isinstance(responses[0], AIMessageChunk):
-                    print(responses[0])
-                    yield responses[0]
+                chunk = responses[0]  # type: ignore
+                if isinstance(chunk, AIMessageChunk):
+                    yield chunk
 
             await self.conn.commit()
             print("-------------------------------")
@@ -95,4 +92,5 @@ class AgentService:
         return {
             "messages": [HumanMessage(content=user_input)],
             "history_messages": [],
+            "token_usage": None,
         }
