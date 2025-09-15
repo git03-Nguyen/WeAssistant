@@ -8,7 +8,8 @@ from app.schemas.document import (
     DocumentResponse,
 )
 from app.schemas.message import (
-    BaseMessageResponse,
+    HistoryMessageResponse,
+    HistoryMessagesResponse,
 )
 from app.schemas.thread import (
     ThreadListResponse,
@@ -37,5 +38,6 @@ __all__ = [
     "ThreadWithMessagesResponse",
     "ThreadListResponse",
     # Message schemas
-    "BaseMessageResponse",
+    "HistoryMessageResponse",
+    "HistoryMessagesResponse",
 ]

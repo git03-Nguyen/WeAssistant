@@ -28,8 +28,10 @@ async def acreate_tables():
             await conn.run_sync(Base.metadata.create_all)
             await conn.commit()
 
-            psycopg_conn = await anext(aget_psycopg_conn(autocommit=True))
+        # Set up checkpointer with proper connection management
+        async for psycopg_conn in aget_psycopg_conn(with_transaction=False):
             await get_checkpointer(psycopg_conn).setup()
+            break
         await PGEngine.from_engine(engine).ainit_vectorstore_table(
             table_name="embeddings",
             vector_size=3072,

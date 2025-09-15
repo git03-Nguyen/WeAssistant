@@ -15,20 +15,23 @@ async def aadd_documents(
     metadata: dict[str, Any],
 ) -> list[str]:
     """Document ingestion"""
-    texts = _split_text(content)
+    docs = _split_text(content)
     title = metadata.get("title", "").strip()
-    chunk_count = len(texts)
-    documents = [
-        Document(
-            page_content=(
-                f"[Title: {title} - Part {i + 1} of {chunk_count}]\n{chunk}"
-                if chunk_count > 1
-                else f"[Title: {title}]\n{chunk}"
-            ),
-            metadata={"chunk_index": i, "chunk_length": len(chunk), **metadata},
+    chunk_count = len(docs)
+    documents = []
+    for i, doc in enumerate(docs):
+        doc.page_content = (
+            f"[Title: {title} - Part {i + 1} of {chunk_count}]\n{doc.page_content}"
+            if chunk_count > 1
+            else f"[Title: {title}]\n{doc.page_content}"
         )
-        for i, chunk in enumerate(texts)
-    ]
+        doc.metadata = {
+            "chunk_index": i,
+            "chunk_length": len(doc.page_content),
+            **metadata,
+            **doc.metadata,
+        }
+        documents.append(doc)
 
     vector_store = await aget_vector_store()
     chunk_ids = await vector_store.aadd_documents(documents)
@@ -60,9 +63,15 @@ _recursive_character_splitter = RecursiveCharacterTextSplitter(
 )
 
 
-def _split_text(text: str) -> list[str]:
+def _split_text(text: str) -> list[Document]:
     """Split text into chunks using markdown header and recursive character splitters."""
     chunks = []
     for headers in _markdown_header_splitter.split_text(text):
-        chunks.extend(_recursive_character_splitter.split_text(headers.page_content))
+        for text in _recursive_character_splitter.split_text(headers.page_content):
+            chunks.append(
+                Document(
+                    page_content=text,
+                    metadata=headers.metadata,
+                )
+            )
     return chunks

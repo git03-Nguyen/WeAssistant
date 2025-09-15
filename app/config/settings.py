@@ -42,7 +42,7 @@ class Settings(BaseSettings):
 
     # Summarization settings
     summary_max_context_token: int = Field(
-        default=1000, alias="SUMMARY_MAX_CONTEXT_TOKEN"
+        default=5000, alias="SUMMARY_MAX_CONTEXT_TOKEN"
     )
     summary_max_message_count: int = Field(
         default=20, alias="SUMMARY_MAX_MESSAGE_COUNT"

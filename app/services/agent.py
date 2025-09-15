@@ -1,6 +1,5 @@
 from pprint import pprint
 
-from langchain.agents import AgentState
 from langchain_core.callbacks import (
     get_usage_metadata_callback,
 )
@@ -10,7 +9,8 @@ from langchain_core.runnables.config import RunnableConfig
 from psycopg import AsyncConnection
 from psycopg.rows import DictRow
 
-from app.core.agent import aget_agent
+from app.core.agent import get_agent
+from app.core.state import AIResponse, HistoryMessageState
 
 
 class AgentService:
@@ -21,9 +21,9 @@ class AgentService:
         """Get the historical chat message for a thread."""
 
         config = RunnableConfig(configurable={"thread_id": thread_id})
-        agent = aget_agent(self.conn)
+        agent = get_agent(self.conn)
         async for state in agent.aget_state_history(config=config):
-            return convert_to_messages(state.values["messages"])
+            return convert_to_messages(state.values["history_messages"])
 
         return []
 
@@ -38,14 +38,15 @@ class AgentService:
         with get_usage_metadata_callback() as usage_callback:
             config = RunnableConfig(
                 configurable={"thread_id": thread_id},
-                recursion_limit=3,
+                recursion_limit=25,
                 callbacks=[usage_callback],
             )
             input = self._create_new_state(user_name, user_input)
-            agent = aget_agent(self.conn)
+            agent = get_agent(self.conn)
             responses = await agent.ainvoke(
                 input=input,
                 config=config,
+                print_mode="debug",
             )
             await self.conn.commit()
 
@@ -59,7 +60,10 @@ class AgentService:
                 return last_message
             return None
 
-    def _create_new_state(self, user_name: str, user_input: str) -> AgentState:
+    def _create_new_state(self, user_name: str, user_input: str) -> HistoryMessageState:
+        """Create a new agent state with the user's input."""
         return {
             "messages": [HumanMessage(content=user_input)],
+            "history_messages": [],
+            "structured_response": AIResponse(text="", sources=[]),
         }

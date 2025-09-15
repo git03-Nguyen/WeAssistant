@@ -7,6 +7,7 @@ from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
 from app.services.agent import AgentService
 from app.services.documents import DocumentService
+from app.services.messages import MessageService
 from app.services.threads import ThreadService
 from app.services.users import UserService
 from app.utils.database import get_asyncpg_engine, get_psycopg_pool
@@ -28,19 +29,22 @@ async def aget_asyncpg_session():
             raise
 
 
-async def aget_psycopg_conn(*, autocommit: bool = False):
+async def aget_psycopg_conn(*, with_transaction: bool = True):
     """Get a connection from the psycopg pool."""
-    async with get_psycopg_pool().connection() as conn:
-        bak_autocommit = conn.autocommit
+    if with_transaction:
+        async with get_psycopg_pool().connection() as conn:
+            try:
+                yield conn
+            except Exception:
+                await conn.rollback()
+                raise
+    else:
+        conn = await get_psycopg_pool().getconn()
         try:
-            await conn.set_autocommit(autocommit)
+            await conn.set_autocommit(True)
             yield conn
-        except Exception:
-            await conn.rollback()
-            raise
         finally:
-            if autocommit != bak_autocommit:
-                await conn.set_autocommit(bak_autocommit)
+            await get_psycopg_pool().putconn(conn)
 
 
 def get_user_service(
@@ -62,6 +66,12 @@ def get_thread_service(
 ) -> ThreadService:
     """Get thread service instance."""
     return ThreadService(session)
+
+def get_message_service(
+    session: AsyncSession = Depends(aget_asyncpg_session),
+) -> MessageService:
+    """Get message service instance."""
+    return MessageService(session)
 
 
 def get_agent_service(
