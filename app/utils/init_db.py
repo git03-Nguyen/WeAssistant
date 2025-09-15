@@ -3,13 +3,13 @@
 from langchain_postgres.v2.engine import PGEngine
 from sqlalchemy import text
 
-from app.api.deps import aget_psycopg_conn
 from app.config.settings import SETTINGS, setup_settings
 from app.core.checkpoint import get_checkpointer
 from app.models.base import Base
 from app.utils.database import (
     close_db_connections,
     get_asyncpg_engine,
+    get_psycopg_pool,
     open_db_connections,
 )
 
@@ -28,10 +28,12 @@ async def acreate_tables():
             await conn.run_sync(Base.metadata.create_all)
             await conn.commit()
 
-        # Set up checkpointer with proper connection management
-        async for psycopg_conn in aget_psycopg_conn(with_transaction=False):
-            await get_checkpointer(psycopg_conn).setup()
-            break
+        conn = await get_psycopg_pool().getconn()
+        try:
+            await conn.set_autocommit(True)
+            await get_checkpointer(conn).setup()
+        finally:
+            await get_psycopg_pool().putconn(conn)
         await PGEngine.from_engine(engine).ainit_vectorstore_table(
             table_name="embeddings",
             vector_size=3072,

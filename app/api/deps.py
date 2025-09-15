@@ -29,22 +29,14 @@ async def aget_asyncpg_session():
             raise
 
 
-async def aget_psycopg_conn(*, with_transaction: bool = True):
+async def aget_psycopg_conn():
     """Get a connection from the psycopg pool."""
-    if with_transaction:
-        async with get_psycopg_pool().connection() as conn:
-            try:
-                yield conn
-            except Exception:
-                await conn.rollback()
-                raise
-    else:
-        conn = await get_psycopg_pool().getconn()
+    async with get_psycopg_pool().connection() as conn:
         try:
-            await conn.set_autocommit(True)
             yield conn
-        finally:
-            await get_psycopg_pool().putconn(conn)
+        except Exception:
+            await conn.rollback()
+            raise
 
 
 def get_user_service(
