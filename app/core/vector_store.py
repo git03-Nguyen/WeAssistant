@@ -60,5 +60,6 @@ async def retrieve_context(query: str):
             f"Source: {document.metadata}\nContent: {document.page_content}\nScore: {score:.4f}"
         )
         for document, score in retrieved_docs
+        if score >= SETTINGS.rag_score_threshold
     )
     return serialized, retrieved_docs
