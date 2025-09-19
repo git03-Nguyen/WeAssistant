@@ -1,0 +1,9 @@
+{
+  "$schema": "https://langgra.ph/schema.json",
+  "dependencies": ["."],
+  "graphs": {
+    "agent": "./test.py:agent"
+  },
+  "env": ".env",
+  "image_distro": "debian"
+}

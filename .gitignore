@@ -46,3 +46,5 @@ node_modules/
 # Ignore notebooks
 *.ipynb
 .ipynb_checkpoints/
+
+.langgraph_api/

@@ -18,4 +18,5 @@ dependencies = [
     "langchain-postgres>=0.0.15",
     "langgraph-checkpoint-postgres>=2.0.23",
     "async-lru>=2.0.5",
+    "langgraph-cli[inmem]>=0.4.2",
 ]
