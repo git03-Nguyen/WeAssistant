@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Database migration script for WeAssistant."""
-
 import asyncio
+import selectors
 import sys
 from pathlib import Path
 
@@ -38,4 +38,10 @@ async def main():
 
 
 if __name__ == "__main__":
-    asyncio.run(main())
+    if sys.platform == "win32":
+        asyncio.run(
+            main(),
+            loop_factory=lambda: asyncio.SelectorEventLoop(selectors.SelectSelector()),
+        )
+    else:
+        asyncio.run(main())
