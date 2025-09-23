@@ -28,7 +28,6 @@ async def aload_md_file(
     metadata = {
         "original_filename": filename,
         "title": title,
-        "size_bytes": len(content_bytes),
         **custom_metadata,
     }
 

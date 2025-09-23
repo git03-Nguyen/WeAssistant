@@ -16,18 +16,13 @@ async def aadd_documents(
 ) -> list[str]:
     """Document ingestion"""
     docs = _split_text(content)
-    title = metadata.get("title", "").strip()
     chunk_count = len(docs)
     documents = []
     for i, doc in enumerate(docs):
-        doc.page_content = (
-            f"[Title: {title} - Part {i + 1} of {chunk_count}]\n{doc.page_content}"
-            if chunk_count > 1
-            else f"[Title: {title}]\n{doc.page_content}"
-        )
         doc.metadata = {
             "chunk_index": i,
             "chunk_length": len(doc.page_content),
+            "total_chunks": chunk_count,
             **metadata,
             **doc.metadata,
         }
