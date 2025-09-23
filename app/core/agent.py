@@ -71,6 +71,7 @@ def pre_model_hook(state: HistoryMessageState) -> HistoryMessageState | None:
     else:
         cut_off = 0
         context_messages = messages
+        state["summary_info"] = None
     state["llm_input_messages"] = context_messages
     return state
 

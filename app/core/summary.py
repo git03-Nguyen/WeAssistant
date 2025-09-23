@@ -88,7 +88,7 @@ def summarize_messages(state: HistoryMessageState) -> HistoryMessageState | None
 
     state["summary_info"] = SummaryInformation(
         summary=_build_human_message(summary),
-        cutoff_point=old_cutoff + new_cutoff,
+        cutoff_point=old_cutoff + new_cutoff - 1 if old_cutoff > 0 else new_cutoff,
     )
     state["token_usage"] = add_usage(state.get("token_usage"), usage_metadata)
     return state
