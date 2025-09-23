@@ -59,7 +59,7 @@ def get_gpt_5_nano_agent():
         tools=[retrieve_context],
         state_schema=HistoryMessageState,
         prompt=SYSTEM_PROMPT,
-        name="WeAssistant Agent",
+        name="gpt-5-nano WeAssistant",
         pre_model_hook=pre_model_hook,
         post_model_hook=post_model_hook,
     )
@@ -71,7 +71,7 @@ def get_gpt_4_1_nano_agent():
         tools=[retrieve_context],
         state_schema=HistoryMessageState,
         prompt=SYSTEM_PROMPT,
-        name="WeAssistant Agent",
+        name="gpt-4.1-nano WeAssistant",
         pre_model_hook=pre_model_hook,
         post_model_hook=post_model_hook,
     )
