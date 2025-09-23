@@ -8,19 +8,20 @@ from langchain_core.messages import (
     AIMessage,
     BaseMessage,
     MessageLikeRepresentation,
-    RemoveMessage,
     ToolMessage,
 )
 from langchain_core.messages.human import HumanMessage
 from langchain_core.messages.utils import count_tokens_approximately, trim_messages
 from langchain_openai import ChatOpenAI
-from langgraph.graph.message import (
-    REMOVE_ALL_MESSAGES,
-)
 
 from app.config.settings import SETTINGS
-from app.core.llm import get_llm
-from app.core.state import CustomUsageMetadata, HistoryMessageState, add_usage
+from app.core.llm import get_summary_llm
+from app.core.state import (
+    CustomUsageMetadata,
+    HistoryMessageState,
+    SummaryInformation,
+    add_usage,
+)
 
 TokenCounter = Callable[[Iterable[MessageLikeRepresentation]], int]
 
@@ -60,42 +61,44 @@ messages_to_keep = SETTINGS.summary_max_message_count
 
 
 def summarize_messages(state: HistoryMessageState) -> HistoryMessageState | None:
-    """Process messages before model invocation, potentially triggering summarization."""
+    """Process messages after model invocation, potentially triggering summarization."""
+
     messages = state["messages"]
-    _ensure_message_ids(messages)
+    summary_info = state.get("summary_info", None)
+    if summary_info and summary_info.get("summary", None):
+        old_cutoff = summary_info["cutoff_point"]
+        context_messages = [summary_info.get("summary"), *messages[old_cutoff:]]
+    else:
+        old_cutoff = 0
+        context_messages = messages
 
-    total_tokens = count_tokens_approximately(messages)
-    if reach_token_to_summary is not None and total_tokens < reach_token_to_summary:
+    _ensure_message_ids(context_messages)
+    if count_tokens_approximately(context_messages) < reach_token_to_summary:
         return None
 
-    cutoff_index = _find_safe_cutoff(messages)
-
-    if cutoff_index <= 0:
+    new_cutoff = _find_safe_cutoff(context_messages)
+    if new_cutoff <= 0:
         return None
 
-    messages_to_summarize, preserved_messages = _partition_messages(
-        messages, cutoff_index
+    messages_to_summarize, messages_to_preserve = _partition_messages(
+        context_messages, new_cutoff
     )
 
-    summary, usage_metadata = _create_summary(get_llm(), messages_to_summarize)
-    new_messages = _build_new_messages(summary)
+    summary, usage_metadata = _create_summary(get_summary_llm(), messages_to_summarize)
 
-    state["messages"] = [
-        RemoveMessage(id=REMOVE_ALL_MESSAGES),
-        *new_messages,
-        *preserved_messages,
-    ]
-
+    state["summary_info"] = SummaryInformation(
+        summary=_build_human_message(summary),
+        cutoff_point=old_cutoff + new_cutoff,
+    )
     state["token_usage"] = add_usage(state.get("token_usage"), usage_metadata)
     return state
 
 
-def _build_new_messages(summary: str) -> list[HumanMessage]:
-    return [
-        HumanMessage(
-            content=f"Here is a summary of the conversation to date:\n\n{summary}"
-        )
-    ]
+def _build_human_message(summary: str) -> HumanMessage:
+    return HumanMessage(
+        content=f"Here is a summary of the conversation to date:\n\n{summary}",
+        id=str(uuid.uuid4()),
+    )
 
 
 def _ensure_message_ids(messages: Sequence[BaseMessage]) -> None:

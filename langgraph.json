@@ -5,5 +5,5 @@
     "agent": "./test.py:agent"
   },
   "env": ".env",
-  "image_distro": "debian"
+  "image_distro": "wolfi"
 }

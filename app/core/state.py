@@ -1,12 +1,11 @@
 import operator
 from datetime import datetime
-from typing import Annotated, Optional, cast
+from typing import Annotated, NotRequired, Optional, Sequence, TypedDict, cast
 
 from langchain.agents.react_agent import AgentState
-from langchain_core.messages import BaseMessage
+from langchain_core.messages import BaseMessage, HumanMessage
 from langchain_core.messages.ai import UsageMetadata
 from langchain_core.utils.usage import _dict_int_op
-from langgraph.graph.message import add_messages
 
 # class AIResponse(BaseModel):
 #     """Structured response format for AI messages."""
@@ -61,9 +60,34 @@ def add_usage(
     merged["timestamp"] = int(datetime.now().timestamp())
     return merged
 
+class SummaryInformation(TypedDict):
+    """State schema for summary information."""
+
+    summary: NotRequired[HumanMessage]
+    cutoff_point: int
+
+
+def append_summary(
+    left: Optional[SummaryInformation],
+    right: Optional[SummaryInformation],
+) -> SummaryInformation:
+    """Append two SummaryInformation objects, preferring the right one."""
+    if not (left or right):
+        return SummaryInformation(cutoff_point=0)
+    if not (left and right):
+        return cast(SummaryInformation, left or right)
+
+    if left["cutoff_point"] >= right["cutoff_point"]:
+        return left
+    else:
+        return right
+
+
 class HistoryMessageState(AgentState):
     """State schema for historical messages."""
 
-    history_messages: Annotated[list[BaseMessage], add_messages]
+    summary_info: Annotated[Optional[SummaryInformation], append_summary]
+
+    llm_input_messages: Sequence[BaseMessage]
 
     token_usage: Annotated[Optional[CustomUsageMetadata], add_usage]

@@ -24,7 +24,7 @@ class AgentService:
         config = RunnableConfig(configurable={"thread_id": thread_id})
         agent = get_agent(self.conn)
         async for state in agent.aget_state_history(config=config):
-            return convert_to_messages(state.values["history_messages"])
+            return convert_to_messages(state.values["messages"])
 
         return []
 
@@ -91,7 +91,7 @@ class AgentService:
         """Create a new agent state with the user's input."""
         return {
             "messages": [HumanMessage(content=user_input)],
-            "history_messages": [],
+            "summary_info": None,
             "token_usage": None,
         }
 

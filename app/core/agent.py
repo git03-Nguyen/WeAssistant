@@ -1,7 +1,7 @@
 from functools import lru_cache
 
 from langchain.agents.react_agent import create_agent
-from langchain_core.messages import AIMessage, HumanMessage, ToolMessage
+from langchain_core.messages import AIMessage, ToolMessage
 from psycopg import AsyncConnection
 from psycopg.rows import DictRow
 
@@ -61,54 +61,34 @@ def get_agent(conn: AsyncConnection[DictRow]):
 
 def pre_model_hook(state: HistoryMessageState) -> HistoryMessageState | None:
     """Process messages before model invocation, potentially triggering summarization."""
-    summarized_state = summarize_messages(state)
-    if summarized_state:
-        state = summarized_state
-    history_state = history_message_pre_hook(state)
-    if history_state:
-        state = history_state
+
+    # Feed pre-processed messages to LLM
+    messages = state["messages"]
+    summary_info = state.get("summary_info", None)
+    if summary_info and summary_info.get("summary", None):
+        cut_off = summary_info["cutoff_point"]
+        context_messages = [summary_info.get("summary"), *messages[cut_off:]]
+    else:
+        cut_off = 0
+        context_messages = messages
+    state["llm_input_messages"] = context_messages
     return state
 
 
 def post_model_hook(state: HistoryMessageState) -> HistoryMessageState | None:
     """Process messages after model invocation."""
-    history_state = history_message_post_hook(state)
-    if history_state:
-        state = history_state
-    return state
 
+    # Summarize messages
+    summarize_messages(state)
 
-def history_message_pre_hook(state: HistoryMessageState) -> HistoryMessageState | None:
-    """Process messages before model invocation, saving history messages."""
-    if state.get("history_messages") is None:
-        state["history_messages"] = []
-
-    messages = state.get("messages", [])
-    last_message = (
-        messages[-1] if messages and isinstance(messages[-1], HumanMessage) else None
-    )
-    if last_message:
-        state["history_messages"].append(last_message)
-
-    return state
-
-
-def history_message_post_hook(state: HistoryMessageState) -> HistoryMessageState | None:
-    """Process messages after model invocation, saving history messages."""
-    if state.get("history_messages") is None:
-        state["history_messages"] = []
-
-    messages = state.get("messages", [])
+    # Update token usage
+    messages = state["messages"]
     last_message = (
         messages[-1]
-        if messages
-        and (
-            isinstance(messages[-1], AIMessage) or isinstance(messages[-1], ToolMessage)
-        )
+        if isinstance(messages[-1], AIMessage) or isinstance(messages[-1], ToolMessage)
         else None
     )
     if last_message:
-        state["history_messages"].append(last_message)
         state["token_usage"] = add_usage(
             state.get("token_usage"), getattr(last_message, "usage_metadata", None)
         )

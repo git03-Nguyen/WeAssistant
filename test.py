@@ -14,9 +14,8 @@ if sys.platform == "win32":
 
 
 def get_agent():
-    model = get_llm()
     return create_agent(
-        model=model,
+        model=get_llm(),
         tools=[retrieve_context],
         state_schema=HistoryMessageState,
         prompt=SYSTEM_PROMPT,

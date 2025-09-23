@@ -55,6 +55,29 @@
             },
             "python": "${workspaceFolder}/.venv/bin/python",
             "justMyCode": false
+        },
+        {
+            "name": "Debug LangGraph Server",
+            "type": "debugpy",
+            "request": "launch",
+            "program": "${workspaceFolder}/.venv/bin/langgraph",
+            "args": [
+                "dev",
+                "--no-browser",
+                "--allow-blocking",
+                "--no-reload"
+            ],
+            "console": "integratedTerminal",
+            "cwd": "${workspaceFolder}",
+            "env": {
+                "PYTHONPATH": "${workspaceFolder}"
+            },
+            "python": "${workspaceFolder}/.venv/bin/python",
+            "autoReload": {
+                "enable": false
+            },
+            "django": false,
+            "justMyCode": false
         }
     ]
 }
