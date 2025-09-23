@@ -2,7 +2,8 @@
   "$schema": "https://langgra.ph/schema.json",
   "dependencies": ["."],
   "graphs": {
-    "agent": "./test.py:agent"
+    "gpt-5-nano": "./langgraph_server.py:gpt_5_nano",
+    "gpt-4-1-nano": "./langgraph_server.py:gpt_4_1_nano"
   },
   "env": ".env",
   "image_distro": "wolfi"
