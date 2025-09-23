@@ -40,6 +40,11 @@ class DocumentIngestResponse(BaseModel):
     chunk_ids: Optional[list[str]] = None
     message: str
 
+class DocumentListIngestResponse(BaseModel):
+    """Response after ingesting multiple documents."""
+
+    results: list[DocumentIngestResponse]
+
 
 class DocumentRemoveResponse(BaseModel):
     """Response after removing a document."""
