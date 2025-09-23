@@ -3,7 +3,8 @@
   "dependencies": ["."],
   "graphs": {
     "gpt-5-nano": "./langgraph_server.py:gpt_5_nano",
-    "gpt-4-1-nano": "./langgraph_server.py:gpt_4_1_nano"
+    "gpt-4-1-nano": "./langgraph_server.py:gpt_4_1_nano",
+    "gpt-4-1-mini": "./langgraph_server.py:gpt_4_1_mini"
   },
   "env": ".env",
   "image_distro": "wolfi"

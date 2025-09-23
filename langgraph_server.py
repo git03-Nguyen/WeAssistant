@@ -53,6 +53,21 @@ def get_gpt_4_1_nano_llm() -> ChatOpenAI:
     )
 
 
+@lru_cache
+def get_gpt_4_1_mini_llm() -> ChatOpenAI:
+    """Cached LLM instance."""
+    return ChatOpenAI(
+        model="gpt-4.1-mini",
+        api_key=SecretStr(SETTINGS.openai_api_key),
+        temperature=1,
+        streaming=True,
+        stream_usage=True,
+        use_responses_api=True,
+        output_version="responses/v1",
+        max_completion_tokens=1024,
+    )
+
+
 def get_gpt_5_nano_agent():
     return create_agent(
         model=get_gpt_5_nano_llm(),
@@ -77,8 +92,21 @@ def get_gpt_4_1_nano_agent():
     )
 
 
+def get_gpt_4_1_mini_agent():
+    return create_agent(
+        model=get_gpt_4_1_mini_llm(),
+        tools=[retrieve_context],
+        state_schema=HistoryMessageState,
+        prompt=SYSTEM_PROMPT,
+        name="gpt-4.1-mini WeAssistant",
+        pre_model_hook=pre_model_hook,
+        post_model_hook=post_model_hook,
+    )
+
+
 asyncio.run(open_db_connections())
 
 # Global agent object
 gpt_5_nano = get_gpt_5_nano_agent()
 gpt_4_1_nano = get_gpt_4_1_nano_agent()
+gpt_4_1_mini = get_gpt_4_1_mini_agent()
